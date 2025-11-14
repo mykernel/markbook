@@ -1,0 +1,62 @@
+// Prisma schema for bookmark system
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Bookmark {
+  id          Int       @id @default(autoincrement())
+  title       String
+  url         String
+  description String?
+  favicon     String?
+  folderId    Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  folder      Folder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  tags        BookmarkTag[]
+
+  @@index([folderId])
+  @@index([title])
+  @@index([url])
+}
+
+model Tag {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  color     String?
+  createdAt DateTime  @default(now())
+
+  bookmarks BookmarkTag[]
+}
+
+model BookmarkTag {
+  bookmarkId Int
+  tagId      Int
+
+  bookmark   Bookmark  @relation(fields: [bookmarkId], references: [id], onDelete: Cascade)
+  tag        Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([bookmarkId, tagId])
+  @@index([bookmarkId])
+  @@index([tagId])
+}
+
+model Folder {
+  id        Int       @id @default(autoincrement())
+  name      String
+  parentId  Int?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  parent    Folder?   @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Folder[]  @relation("FolderHierarchy")
+  bookmarks Bookmark[]
+
+  @@index([parentId])
+}
