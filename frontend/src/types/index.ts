@@ -5,6 +5,8 @@ export interface Bookmark {
   description?: string | null;
   favicon?: string | null;
   folderId?: number | null;
+  visitCount: number;
+  lastVisitedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   tags?: BookmarkTag[];
@@ -81,4 +83,14 @@ export interface SearchParams {
   folderId?: number;
   page?: number;
   limit?: number;
+  sort?: BookmarkSortOption;
+}
+
+export type BookmarkSortOption = 'createdAt' | 'visitCount' | 'lastVisitedAt';
+
+export interface BulkActionInput {
+  action: 'delete' | 'move' | 'addTags' | 'removeTags';
+  bookmarkIds: number[];
+  targetFolderId?: number | null;
+  tags?: string[];
 }

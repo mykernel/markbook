@@ -9,7 +9,7 @@ export class TagController extends BaseController {
     super();
   }
 
-  async getAll(req: Request, res: Response): Promise<void> {
+  async getAll(_req: Request, res: Response): Promise<void> {
     try {
       const tags = await this.tagService.getAllTags();
       this.handleSuccess(res, tags);

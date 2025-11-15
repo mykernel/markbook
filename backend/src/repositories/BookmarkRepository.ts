@@ -7,10 +7,11 @@ export class BookmarkRepository {
     take?: number;
     where?: Prisma.BookmarkWhereInput;
     include?: Prisma.BookmarkInclude;
+    orderBy?: Prisma.BookmarkOrderByWithRelationInput;
   }): Promise<Bookmark[]> {
     return prisma.bookmark.findMany({
       ...options,
-      orderBy: { createdAt: 'desc' },
+      orderBy: options?.orderBy ?? { createdAt: 'desc' },
     });
   }
 
@@ -67,11 +68,30 @@ export class BookmarkRepository {
     });
   }
 
+  async addTags(bookmarkId: number, tagIds: number[]): Promise<void> {
+    if (tagIds.length === 0) return;
+    const uniqueTagIds = Array.from(new Set(tagIds));
+    await prisma.bookmarkTag.createMany({
+      data: uniqueTagIds.map(tagId => ({ bookmarkId, tagId })),
+    });
+  }
+
+  async removeTags(bookmarkId: number, tagIds: number[]): Promise<void> {
+    if (tagIds.length === 0) return;
+    await prisma.bookmarkTag.deleteMany({
+      where: {
+        bookmarkId,
+        tagId: { in: tagIds },
+      },
+    });
+  }
+
   async search(query: string, options?: {
     skip?: number;
     take?: number;
     folderIds?: number[];
     tagIds?: number[];
+    orderBy?: Prisma.BookmarkOrderByWithRelationInput;
   }): Promise<{ bookmarks: Bookmark[]; total: number }> {
     const where = this.buildSearchWhere(query, options);
 
@@ -88,7 +108,7 @@ export class BookmarkRepository {
           },
           folder: true,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: options?.orderBy ?? { createdAt: 'desc' },
       }),
       prisma.bookmark.count({ where }),
     ]);

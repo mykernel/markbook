@@ -5,14 +5,13 @@ import { BookmarkRepository } from '../repositories/BookmarkRepository';
 import { TagRepository } from '../repositories/TagRepository';
 import { FolderService } from '../services/folderService';
 import { FolderRepository } from '../repositories/FolderRepository';
-import { prisma } from '../config/database';
 
 const router = Router();
 
 // 依赖注入
-const bookmarkRepository = new BookmarkRepository(prisma);
+const bookmarkRepository = new BookmarkRepository();
 const tagRepository = new TagRepository();
-const folderRepository = new FolderRepository(prisma);
+const folderRepository = new FolderRepository();
 const bookmarkService = new BookmarkService(bookmarkRepository, tagRepository, folderRepository);
 const folderService = new FolderService(folderRepository);
 const importController = new ImportController(bookmarkService, folderService);

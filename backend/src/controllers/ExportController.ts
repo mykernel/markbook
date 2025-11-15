@@ -10,8 +10,8 @@ export class ExportController extends BaseController {
   /**
    * 导出为Netscape书签HTML格式
    */
-  exportHTML = this.asyncHandler(async (req: Request, res: Response) => {
-    const bookmarks = await this.bookmarkService.getAll();
+  exportHTML = this.asyncHandler(async (_req: Request, res: Response) => {
+    const bookmarks = (await this.bookmarkService.getAll()) as any[];
 
     const html = this.generateNetscapeHTML(bookmarks);
 
@@ -23,15 +23,15 @@ export class ExportController extends BaseController {
   /**
    * 导出为JSON格式
    */
-  exportJSON = this.asyncHandler(async (req: Request, res: Response) => {
-    const bookmarks = await this.bookmarkService.getAll();
+  exportJSON = this.asyncHandler(async (_req: Request, res: Response) => {
+    const bookmarks = (await this.bookmarkService.getAll()) as any[];
 
     const exportData = bookmarks.map(bm => ({
       title: bm.title,
       url: bm.url,
       description: bm.description,
       folder: bm.folder?.name,
-      tags: bm.tags?.map(t => t.tag.name) || [],
+      tags: bm.tags?.map((t: any) => t.tag.name) || [],
       createdAt: bm.createdAt,
     }));
 

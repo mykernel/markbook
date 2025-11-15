@@ -18,6 +18,8 @@ const controller = new BookmarkController(bookmarkService);
 // Routes
 router.get('/', asyncWrapper((req, res) => controller.getAll(req, res)));
 router.get('/search', asyncWrapper((req, res) => controller.search(req, res)));
+router.post('/bulk/actions', asyncWrapper((req, res) => controller.bulk(req, res)));
+router.post('/:id/visit', asyncWrapper((req, res) => controller.recordVisit(req, res)));
 router.get('/:id', asyncWrapper((req, res) => controller.getById(req, res)));
 router.post('/', asyncWrapper((req, res) => controller.create(req, res)));
 router.put('/:id', asyncWrapper((req, res) => controller.update(req, res)));

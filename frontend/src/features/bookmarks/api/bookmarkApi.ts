@@ -6,13 +6,19 @@ import type {
   CreateBookmarkInput,
   UpdateBookmarkInput,
   SearchParams,
+  BookmarkSortOption,
+  BulkActionInput,
 } from '~types';
 
 export const bookmarkApi = {
-  getAll: async (page: number = 1, limit: number = 20): Promise<PaginatedResponse<Bookmark>> => {
+  getAll: async (
+    page: number = 1,
+    limit: number = 20,
+    sort?: BookmarkSortOption
+  ): Promise<PaginatedResponse<Bookmark>> => {
     const response = await apiClient.get<ApiResponse<PaginatedResponse<Bookmark>>>(
       '/bookmarks',
-      { params: { page, limit } }
+      { params: { page, limit, ...(sort ? { sort } : {}) } }
     );
     return response.data.data!;
   },
@@ -43,10 +49,19 @@ export const bookmarkApi = {
     if (params.folderId) searchParams.append('folderId', params.folderId.toString());
     if (params.page) searchParams.append('page', params.page.toString());
     if (params.limit) searchParams.append('limit', params.limit.toString());
+    if (params.sort) searchParams.append('sort', params.sort);
 
     const response = await apiClient.get<ApiResponse<PaginatedResponse<Bookmark>>>(
       `/bookmarks/search?${searchParams.toString()}`
     );
     return response.data.data!;
+  },
+
+  trackVisit: async (id: number): Promise<void> => {
+    await apiClient.post(`/bookmarks/${id}/visit`);
+  },
+
+  bulkAction: async (payload: BulkActionInput): Promise<void> => {
+    await apiClient.post('/bookmarks/bulk/actions', payload);
   },
 };

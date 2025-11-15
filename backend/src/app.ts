@@ -26,7 +26,7 @@ export const createApp = (): Express => {
   app.use('/api/export', exportRoutes);
 
   // Health check
-  app.get('/api/health', (req, res) => {
+  app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 

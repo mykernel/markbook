@@ -9,7 +9,7 @@ export class FolderController extends BaseController {
     super();
   }
 
-  async getAll(req: Request, res: Response): Promise<void> {
+  async getAll(_req: Request, res: Response): Promise<void> {
     try {
       const folders = await this.folderService.getAllFolders();
       this.handleSuccess(res, folders);
@@ -18,7 +18,7 @@ export class FolderController extends BaseController {
     }
   }
 
-  async getRoots(req: Request, res: Response): Promise<void> {
+  async getRoots(_req: Request, res: Response): Promise<void> {
     try {
       const folders = await this.folderService.getRootFolders();
       this.handleSuccess(res, folders);

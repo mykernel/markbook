@@ -26,7 +26,8 @@ export class ImportController extends BaseController {
     const { htmlContent } = req.body;
 
     if (!htmlContent || typeof htmlContent !== 'string') {
-      return res.status(400).json({ error: '请提供有效的HTML内容' });
+      res.status(400).json({ error: '请提供有效的HTML内容' });
+      return;
     }
 
     try {
@@ -51,7 +52,6 @@ export class ImportController extends BaseController {
   private parseNetscapeBookmarks(html: string): ImportedBookmark[] {
     const root = parseHTML(html);
     const bookmarks: ImportedBookmark[] = [];
-    let currentFolder = '';
 
     // 递归解析DL列表
     const parseDL = (dlElement: any, folderPath = '') => {
@@ -120,7 +120,7 @@ export class ImportController extends BaseController {
 
             if (!folderMap.has(fullPath)) {
               try {
-                const folder = await this.folderService.create({
+                const folder = await this.folderService.createFolder({
                   name: folderName,
                   parentId: parentId ?? undefined,
                 });
@@ -128,7 +128,7 @@ export class ImportController extends BaseController {
                 parentId = folder.id;
               } catch (error) {
                 // 文件夹可能已存在，尝试查找
-                const existingFolders = await this.folderService.getAll();
+                const existingFolders = await this.folderService.getAllFolders();
                 const existing = existingFolders.find(
                   f => f.name === folderName && f.parentId === parentId
                 );
@@ -148,7 +148,7 @@ export class ImportController extends BaseController {
         }
 
         // 创建书签
-        await this.bookmarkService.create({
+        await this.bookmarkService.createBookmark({
           title: bookmark.title,
           url: bookmark.url,
           folderId,
@@ -173,7 +173,8 @@ export class ImportController extends BaseController {
     const { bookmarks } = req.body;
 
     if (!Array.isArray(bookmarks)) {
-      return res.status(400).json({ error: '请提供有效的书签数组' });
+      res.status(400).json({ error: '请提供有效的书签数组' });
+      return;
     }
 
     const result = {
@@ -184,7 +185,7 @@ export class ImportController extends BaseController {
 
     for (const bm of bookmarks) {
       try {
-        await this.bookmarkService.create({
+        await this.bookmarkService.createBookmark({
           title: bm.title || 'Untitled',
           url: bm.url,
           description: bm.description,
