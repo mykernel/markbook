@@ -1,14 +1,16 @@
 import express, { Express } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import { errorHandler } from './middleware/errorHandler';
 import bookmarkRoutes from './routes/bookmarkRoutes';
 import folderRoutes from './routes/folderRoutes';
 import tagRoutes from './routes/tagRoutes';
 import importRoutes from './routes/importRoutes';
 import exportRoutes from './routes/exportRoutes';
+import aiRoutes from './routes/aiRoutes';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 export const createApp = (): Express => {
   const app = express();
@@ -24,6 +26,7 @@ export const createApp = (): Express => {
   app.use('/api/tags', tagRoutes);
   app.use('/api/import', importRoutes);
   app.use('/api/export', exportRoutes);
+  app.use('/api/ai', aiRoutes);
 
   // Health check
   app.get('/api/health', (_req, res) => {

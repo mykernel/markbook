@@ -7,14 +7,21 @@ import { FolderDialogCN } from '@/features/folders/components/FolderDialogCN';
 import { BulkMoveDialog } from '@/features/folders/components/BulkMoveDialog';
 import { ImportDialogCN } from '@/features/import/components/ImportDialogCN';
 import { Sidebar } from '@/components/Sidebar';
-import type { Bookmark as BookmarkType, Folder, BookmarkSortOption, BulkActionInput } from '~types';
+import type {
+  Bookmark as BookmarkType,
+  Folder,
+  BookmarkSortOption,
+  BulkActionInput,
+  AiSuggestion,
+} from '~types';
 import { SuspenseLoader } from '@/components/SuspenseLoader/SuspenseLoader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { folderApi } from '@/features/folders/api/folderApi';
-import { tagApi } from '@/features/tags/api/tagApi';
+import { AiSuggestionDialog } from './AiSuggestionDialog';
+import { aiApi } from '@/features/ai/api/aiApi';
 import {
   Select,
   SelectContent,
@@ -42,17 +49,17 @@ const BookmarkPageContent: React.FC = () => {
   const [bulkAddTags, setBulkAddTags] = useState('');
   const [bulkRemoveTags, setBulkRemoveTags] = useState('');
   const [bulkResultMessage, setBulkResultMessage] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState('');
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [applyingAllAi, setApplyingAllAi] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<AiSuggestion[]>([]);
   const queryClient = useQueryClient();
 
   // 获取文件夹列表
   const { data: folders = [] } = useSuspenseQuery({
     queryKey: ['folders'],
     queryFn: () => folderApi.getAll(),
-  });
-
-  const { data: statsTags = [] } = useSuspenseQuery({
-    queryKey: ['tags', 'stats'],
-    queryFn: () => tagApi.getAll(),
   });
 
   const { data: topVisitedData } = useSuspenseQuery({
@@ -75,29 +82,16 @@ const BookmarkPageContent: React.FC = () => {
     [recentVisitedData]
   );
 
-  const topTags = useMemo(
-    () =>
-      statsTags
-        .filter(tag => (tag._count?.bookmarks ?? 0) > 0)
-        .sort((a, b) => (b._count?.bookmarks ?? 0) - (a._count?.bookmarks ?? 0))
-        .slice(0, 5),
-    [statsTags]
-  );
-
-  const topFolders = useMemo(
-    () =>
-      folders
-        .filter(folder => (folder._count?.bookmarks ?? 0) > 0)
-        .sort((a, b) => (b._count?.bookmarks ?? 0) - (a._count?.bookmarks ?? 0))
-        .slice(0, 5),
-    [folders]
-  );
-
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const saved = localStorage.getItem('bookmark_sort_option');
     if (saved === 'createdAt' || saved === 'visitCount' || saved === 'lastVisitedAt') {
       setSortOption(saved);
+    }
+
+    const savedProfile = localStorage.getItem('bookmark_user_profile');
+    if (savedProfile) {
+      setUserProfile(savedProfile);
     }
   }, []);
 
@@ -105,6 +99,11 @@ const BookmarkPageContent: React.FC = () => {
     if (typeof window === 'undefined') return;
     localStorage.setItem('bookmark_sort_option', sortOption);
   }, [sortOption]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('bookmark_user_profile', userProfile);
+  }, [userProfile]);
 
   const selectedFolderLabel = useMemo(() => {
     if (bulkMoveFolderId === null) return '根目录';
@@ -266,11 +265,129 @@ const BookmarkPageContent: React.FC = () => {
     handleBulk({ action: 'removeTags', tags });
   }, [handleBulk, bulkRemoveTags]);
 
+  const fetchAiSuggestions = useCallback(async () => {
+    if (selectedIds.length === 0) {
+      alert('请先选择要整理的书签');
+      return;
+    }
+
+    try {
+      setAiLoading(true);
+      const suggestions = await aiApi.organize(selectedIds, userProfile.trim() || undefined);
+      setAiSuggestions(suggestions);
+      setAiDialogOpen(true);
+    } catch (error) {
+      console.error('获取 AI 建议失败', error);
+      alert('获取 AI 建议失败，请稍后重试');
+    } finally {
+      setAiLoading(false);
+    }
+  }, [selectedIds]);
+
+  const ensureFolderPath = useCallback(
+    async (folderPath?: string | null): Promise<number | null> => {
+      if (!folderPath || !folderPath.trim()) {
+        return null;
+      }
+
+      const parts = folderPath
+        .split('/')
+        .map(part => part.trim())
+        .filter(Boolean);
+
+      if (parts.length === 0) {
+        return null;
+      }
+
+      if (parts.length > 2) {
+        throw new Error('仅支持两级文件夹结构，请选择已有目录或精简路径');
+      }
+
+      let allFolders = [...folders];
+      let parentId: number | null = null;
+
+      for (const part of parts) {
+        let match = allFolders.find(
+          folder => folder.name === part && folder.parentId === parentId
+        );
+
+        if (!match) {
+          const created = await folderApi.create({ name: part, parentId: parentId ?? undefined });
+          match = created;
+          allFolders = [...allFolders, created];
+          await queryClient.invalidateQueries({ queryKey: ['folders'] });
+        }
+
+        parentId = match.id;
+      }
+
+      return parentId;
+    },
+    [folders, queryClient]
+  );
+
+  const applyAiSuggestion = useCallback(
+    async (suggestion: AiSuggestion, options?: { silent?: boolean }) => {
+      try {
+        const bookmarkId = suggestion.bookmarkId;
+        if (suggestion.recommendedFolder) {
+          const folderId = await ensureFolderPath(suggestion.recommendedFolder);
+          await bookmarkApi.bulkAction({
+            action: 'move',
+            bookmarkIds: [bookmarkId],
+            targetFolderId: folderId ?? null,
+          });
+        }
+
+        if (
+          suggestion.recommendedTags &&
+          suggestion.recommendedTags.length > 0 &&
+          suggestion.recommendedTags.length <= 3
+        ) {
+          await bookmarkApi.bulkAction({
+            action: 'addTags',
+            bookmarkIds: [bookmarkId],
+            tags: suggestion.recommendedTags,
+          });
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+        queryClient.invalidateQueries({ queryKey: ['folders'] });
+        queryClient.invalidateQueries({ queryKey: ['tags'] });
+        if (!options?.silent) {
+          alert(`已应用 ${bookmarkId} 的整理建议`);
+        }
+      } catch (error) {
+        console.error('应用 AI 建议失败', error);
+        alert('应用 AI 建议失败，请稍后再试');
+      }
+    },
+    [ensureFolderPath, queryClient]
+  );
+
   const handleDelete = useCallback((id: number, title: string) => {
     if (confirm(`确定要删除书签"${title}"吗？`)) {
       deleteMutation.mutate(id);
     }
   }, [deleteMutation]);
+
+  const applyAllSuggestions = useCallback(async () => {
+    if (aiSuggestions.length === 0) return;
+    setApplyingAllAi(true);
+    try {
+      for (const suggestion of aiSuggestions) {
+        await applyAiSuggestion(suggestion, { silent: true });
+      }
+      alert('已应用全部 AI 建议');
+      setAiDialogOpen(false);
+      clearSelection();
+    } catch (error) {
+      console.error('批量应用 AI 建议失败', error);
+      alert('批量应用 AI 建议失败，请稍后再试');
+    } finally {
+      setApplyingAllAi(false);
+    }
+  }, [aiSuggestions, applyAiSuggestion, clearSelection]);
 
   const handleOpenDialog = useCallback((bookmark?: BookmarkType) => {
     setEditingBookmark(bookmark);
@@ -524,6 +641,15 @@ const BookmarkPageContent: React.FC = () => {
                           目标：{selectedFolderLabel}
                         </span>
                       </div>
+                      <Button variant="outline" onClick={fetchAiSuggestions} disabled={aiLoading}>
+                        {aiLoading ? 'AI 分析中...' : 'AI 整理建议'}
+                      </Button>
+                      <Input
+                        value={userProfile}
+                        onChange={(e) => setUserProfile(e.target.value)}
+                        placeholder="职业/偏好（例：运维工程师）"
+                        className="w-64"
+                      />
                     </div>
                     <div className="flex flex-col gap-2 md:flex-row md:items-center">
                       <div className="flex flex-1 items-center gap-2">
@@ -746,6 +872,19 @@ const BookmarkPageContent: React.FC = () => {
                 onConfirm={confirmBulkMove}
               />
             )}
+
+            <AiSuggestionDialog
+              open={aiDialogOpen}
+              loading={aiLoading}
+              suggestions={aiSuggestions}
+              bookmarks={data.bookmarks}
+              profile={userProfile.trim() || undefined}
+              applyingAll={applyingAllAi}
+              onClose={() => setAiDialogOpen(false)}
+              onRefresh={fetchAiSuggestions}
+              onApply={applyAiSuggestion}
+              onApplyAll={applyAllSuggestions}
+            />
 
             {/* 导入对话框 */}
             <Suspense fallback={null}>

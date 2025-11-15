@@ -2,6 +2,8 @@ import { prisma } from '../config/database';
 import type { Tag, Prisma } from '@prisma/client';
 
 export class TagRepository {
+  private static readonly MAX_TAGS = 50;
+
   async findAll(): Promise<Tag[]> {
     return prisma.tag.findMany({
       where: {
@@ -18,6 +20,10 @@ export class TagRepository {
       },
       orderBy: { name: 'asc' },
     });
+  }
+
+  async count(): Promise<number> {
+    return prisma.tag.count();
   }
 
   async findById(id: number): Promise<Tag | null> {
@@ -68,6 +74,10 @@ export class TagRepository {
     const existing = await this.findByName(name);
     if (existing) {
       return existing;
+    }
+    const total = await this.count();
+    if (total >= TagRepository.MAX_TAGS) {
+      throw new Error('标签数量已达上限（50 个），请先清理不需要的标签');
     }
     return this.create({ name, color });
   }

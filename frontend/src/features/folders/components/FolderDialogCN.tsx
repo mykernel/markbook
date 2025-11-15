@@ -28,6 +28,19 @@ interface FolderDialogCNProps {
   onDeleted?: (folderId: number) => void;
 }
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (typeof error === 'object' && error && 'response' in error) {
+    const res = (error as any).response;
+    if (res?.data?.error) {
+      return res.data.error;
+    }
+    if (res?.data?.message) {
+      return res.data.message;
+    }
+  }
+  return fallback;
+};
+
 export const FolderDialogCN: React.FC<FolderDialogCNProps> = ({
   open,
   onClose,
@@ -70,7 +83,7 @@ export const FolderDialogCN: React.FC<FolderDialogCNProps> = ({
       onClose();
     } catch (error) {
       console.error('保存文件夹失败:', error);
-      alert('保存失败，请重试');
+      alert(getErrorMessage(error, '保存失败，请重试'));
     } finally {
       setLoading(false);
     }
@@ -91,7 +104,7 @@ export const FolderDialogCN: React.FC<FolderDialogCNProps> = ({
       onClose();
     } catch (error) {
       console.error('删除文件夹失败:', error);
-      alert('删除失败，请稍后重试');
+      alert(getErrorMessage(error, '删除失败，请稍后重试'));
     } finally {
       setDeleteLoading(false);
     }

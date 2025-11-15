@@ -94,3 +94,10 @@ export interface BulkActionInput {
   targetFolderId?: number | null;
   tags?: string[];
 }
+
+export interface AiSuggestion {
+  bookmarkId: number;
+  recommendedFolder?: string | null;
+  recommendedTags?: string[];
+  reason?: string;
+}

@@ -21,6 +21,10 @@ export class TagService {
     if (existing) {
       throw new Error('Tag with this name already exists');
     }
+    const total = await this.tagRepo.count();
+    if (total >= 50) {
+      throw new Error('标签数量已达上限（50 个），请先清理不需要的标签');
+    }
     return this.tagRepo.create(input);
   }
 

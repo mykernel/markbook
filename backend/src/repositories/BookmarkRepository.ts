@@ -68,11 +68,53 @@ export class BookmarkRepository {
     });
   }
 
+  async findByIds(ids: number[]): Promise<Bookmark[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    return prisma.bookmark.findMany({
+      where: { id: { in: ids } },
+      include: {
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+        folder: true,
+      },
+    });
+  }
+
+  async findRecent(limit: number = 10): Promise<Bookmark[]> {
+    return prisma.bookmark.findMany({
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+        folder: true,
+      },
+    });
+  }
+
   async addTags(bookmarkId: number, tagIds: number[]): Promise<void> {
     if (tagIds.length === 0) return;
     const uniqueTagIds = Array.from(new Set(tagIds));
+    const existing = await prisma.bookmarkTag.findMany({
+      where: {
+        bookmarkId,
+        tagId: { in: uniqueTagIds },
+      },
+      select: { tagId: true },
+    });
+    const existingIds = new Set(existing.map(item => item.tagId));
+    const toCreate = uniqueTagIds.filter(id => !existingIds.has(id));
+    if (toCreate.length === 0) return;
     await prisma.bookmarkTag.createMany({
-      data: uniqueTagIds.map(tagId => ({ bookmarkId, tagId })),
+      data: toCreate.map(tagId => ({ bookmarkId, tagId })),
     });
   }
 

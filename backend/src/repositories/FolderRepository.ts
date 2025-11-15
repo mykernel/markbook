@@ -43,6 +43,18 @@ export class FolderRepository {
     });
   }
 
+  async countRootFolders(): Promise<number> {
+    return prisma.folder.count({
+      where: { parentId: null },
+    });
+  }
+
+  async countChildren(parentId: number): Promise<number> {
+    return prisma.folder.count({
+      where: { parentId },
+    });
+  }
+
   async create(data: Prisma.FolderCreateInput): Promise<Folder> {
     return prisma.folder.create({
       data,
