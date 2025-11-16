@@ -107,4 +107,13 @@ export class FolderRepository {
 
     return Array.from(descendantIds);
   }
+
+  async findByNameAndParent(name: string, parentId: number | null): Promise<Folder | null> {
+    return prisma.folder.findFirst({
+      where: {
+        name,
+        parentId,
+      },
+    });
+  }
 }

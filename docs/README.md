@@ -10,20 +10,21 @@
 ## ✨ 特性
 
 ### 核心功能
-- 📚 **书签管理**: 添加、编辑、删除和组织书签
-- 🏷️ **标签系统**: 灵活的多标签分类
-- 📁 **文件夹**: 层级化的文件夹结构
-- 🔍 **搜索功能**: 全文搜索（待完善）
-- 🎨 **现代 UI**: Material-UI v7 组件
-- 📱 **响应式设计**: 移动端友好
+- 📚 **书签管理**: 添加 / 编辑 / 删除 / 批量操作，支持访问次数与最近访问记录
+- 🏷️ **标签系统**: 多标签分类并控制总量（≤50），重复自动合并
+- 📁 **文件夹**: 两级结构（根目录 ≤5、二级 ≤20），可自动新建并限制深度
+- 🔍 **搜索体验**: 全文检索 + 关键词高亮 + 排序（收藏时间 / 访问次数 / 最近访问）
+- 🧠 **AI 整理助手**: DeepSeek API 根据用户职业给出目录/标签建议，可一键应用
+- 👀 **多视图 UI**: 卡片 / 表格视图切换，热门/最近访问统计卡片
+- 📱 **现代 UI**: Material-UI v7 + Tailwind，移动端响应式
 
 ### 技术特性
-- ⚡ **快速开发**: Vite + HMR
-- 🔒 **类型安全**: 全栈 TypeScript
-- 🎯 **分层架构**: Routes → Controllers → Services → Repositories
-- ✅ **输入验证**: Zod schema 验证
-- 🔄 **实时更新**: TanStack Query 缓存
-- 💾 **本地存储**: SQLite 数据库
+- ⚡ **快速开发**: Vite + HMR，TanStack Query + Suspense
+- 🔒 **类型安全**: 全栈 TypeScript + Zod schema
+- 🎯 **清晰架构**: Routes → Controllers → Services → Repositories
+- 🤖 **AI 集成**: DeepSeek Chat Completion + 职业提示模板
+- 📊 **访问统计**: visitCount / lastVisitedAt 字段、热门/最近访问卡片
+- 💾 **数据存储**: SQLite + Prisma，含迁移与 Studio 支持
 
 ## 🚀 快速开始
 
@@ -60,9 +61,10 @@ npm run dev
 
 ### 访问应用
 
-- 🌐 前端: http://localhost:3000
+- 🌐 前端: http://localhost:3000（卡片/表格视图、AI 面板、批量操作）
 - 🔌 后端 API: http://localhost:3001/api
 - 💚 健康检查: http://localhost:3001/api/health
+- 🧠 AI 整理: http://localhost:3001/api/ai/organize
 - 🗄️ Prisma Studio: `cd backend && npm run prisma:studio`
 
 ## 📖 文档
@@ -153,12 +155,14 @@ npm run preview          # 预览生产版本
 
 ### 书签 (Bookmarks)
 ```
-GET    /api/bookmarks          # 获取所有书签（分页）
-GET    /api/bookmarks/search   # 搜索书签
-GET    /api/bookmarks/:id      # 获取单个书签
-POST   /api/bookmarks          # 创建书签
-PUT    /api/bookmarks/:id      # 更新书签
-DELETE /api/bookmarks/:id      # 删除书签
+GET    /api/bookmarks                # 获取所有书签（分页 + 排序）
+GET    /api/bookmarks/search         # 搜索书签（关键词、高亮、筛选）
+GET    /api/bookmarks/:id            # 获取单个书签
+POST   /api/bookmarks                # 创建书签
+PUT    /api/bookmarks/:id            # 更新书签
+DELETE /api/bookmarks/:id            # 删除书签
+POST   /api/bookmarks/:id/visit      # 记录访问次数和时间
+POST   /api/bookmarks/bulk/actions   # 批量删除/移动/增删标签
 ```
 
 ### 标签 (Tags)
@@ -178,37 +182,38 @@ PUT    /api/folders/:id        # 更新文件夹
 DELETE /api/folders/:id        # 删除文件夹
 ```
 
+### AI 智能整理
+```
+POST   /api/ai/organize        # 传入书签 ID 列表 + 职业/偏好，获得目录/标签建议
+```
+
 ## 🎨 功能截图
 
 ### 书签列表
-- 卡片式展示
-- 响应式 Grid 布局
-- 标签彩色显示
-- 文件夹分类
+- 卡片 / 表格视图，支持多选、批量操作与关键词高亮
+- 响应式布局，标签彩色展示，访问次数 / 最近访问清晰可见
+- 顶部统计卡片（热门书签、最近访问）快速定位高频条目
 
-### 添加/编辑书签
-- Material-UI 对话框
-- 标签自动完成
-- 文件夹选择器
-- Zod 验证
+### 添加/编辑/AI 整理
+- Material-UI 对话框 + Zod 校验，支持快捷键提交
+- AI 整理面板展示 DeepSeek 建议，可逐条或一键应用
+- 目录/标签若不存在且符合配额会自动新建
 
 ## 🔄 开发路线图
 
 ### ✅ 已完成
-- [x] 后端 API 完整实现
-- [x] 前端基础界面
-- [x] 书签 CRUD 操作
-- [x] 标签系统
-- [x] 文件夹层级结构
-- [x] 响应式设计
+- [x] 书签 CRUD、批量操作、访问统计
+- [x] 标签限制 + 自动合并、文件夹两级限制
+- [x] 卡片/表格视图切换、Top N 统计卡片
+- [x] DeepSeek AI 整理（职业驱动、一键应用）
+- [x] 搜索关键词高亮、排序记忆、Sidebar 管理
 
 ### 🚧 计划中
-- [ ] 搜索功能完善
-- [ ] 侧边栏导航
-- [ ] 书签导入导出
-- [ ] 暗色模式
-- [ ] 拖拽排序
-- [ ] 自动获取网站图标
+- [ ] 导入/导出增强（去重、字段自定义）
+- [ ] 标签管理界面（合并/重命名/清理空标签）
+- [ ] 暗色模式与主题自定义
+- [ ] 拖拽排序、快捷收藏入口
+- [ ] 访问趋势仪表盘、更多职业模板
 
 ## 🐛 故障排查
 

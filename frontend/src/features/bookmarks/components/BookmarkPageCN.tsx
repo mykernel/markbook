@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { folderApi } from '@/features/folders/api/folderApi';
+import { tagApi } from '@/features/tags/api/tagApi';
 import { AiSuggestionDialog } from './AiSuggestionDialog';
 import { aiApi } from '@/features/ai/api/aiApi';
 import {
@@ -61,6 +62,11 @@ const BookmarkPageContent: React.FC = () => {
   const { data: folders = [] } = useSuspenseQuery({
     queryKey: ['folders'],
     queryFn: () => folderApi.getAll(),
+  });
+
+  const { data: tags = [] } = useSuspenseQuery({
+    queryKey: ['tags'],
+    queryFn: () => tagApi.getAll(),
   });
 
   const { data: topVisitedData } = useSuspenseQuery({
@@ -121,6 +127,13 @@ const BookmarkPageContent: React.FC = () => {
     const target = folders.find(folder => folder.id === bulkMoveFolderId);
     return target?.name ?? '根目录';
   }, [bulkMoveFolderId, folders]);
+
+  const rootFolderCount = useMemo(
+    () => folders.filter(folder => folder.parentId === null).length,
+    [folders]
+  );
+
+  const tagCount = tags.length;
 
   useEffect(() => {
     if (!bulkResultMessage) return;
@@ -651,6 +664,10 @@ const BookmarkPageContent: React.FC = () => {
                     <div className="text-sm font-medium">
                       已选择 {selectedIds.length} 个书签
                     </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>根目录 {rootFolderCount}/5</span>
+                      <span>标签 {tagCount}/50</span>
+                    </div>
                     <div className="flex items-center gap-2">
                       <Button variant="outline" size="sm" onClick={handleSelectAll}>
                         选择当前页
@@ -660,7 +677,7 @@ const BookmarkPageContent: React.FC = () => {
                       </Button>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-4">
                     <div className="flex flex-wrap gap-3 items-center">
                       <Button
                         variant="destructive"
@@ -680,12 +697,17 @@ const BookmarkPageContent: React.FC = () => {
                       <Button variant="outline" onClick={fetchAiSuggestions} disabled={aiLoading}>
                         {aiLoading ? 'AI 分析中...' : 'AI 整理建议'}
                       </Button>
-                      <Input
-                        value={userProfile}
-                        onChange={(e) => setUserProfile(e.target.value)}
-                        placeholder="职业/偏好（例：运维工程师）"
-                        className="w-64"
-                      />
+                      <div className="flex flex-col gap-1">
+                        <Input
+                          value={userProfile}
+                          onChange={(e) => setUserProfile(e.target.value)}
+                          placeholder="职业/偏好（例：运维工程师）"
+                          className="w-64"
+                        />
+                        <span className="text-[11px] text-muted-foreground">
+                          AI 将结合此信息推荐更贴合的目录和标签
+                        </span>
+                      </div>
                     </div>
                     <div className="flex flex-col gap-2 md:flex-row md:items-center">
                       <div className="flex flex-1 items-center gap-2">
@@ -1064,6 +1086,8 @@ const BookmarkPageContent: React.FC = () => {
               bookmarks={data.bookmarks}
               profile={userProfile.trim() || undefined}
               applyingAll={applyingAllAi}
+              existingFolders={folders.map(folder => folder.name)}
+              existingTags={tags.map(tag => tag.name)}
               onClose={() => setAiDialogOpen(false)}
               onRefresh={fetchAiSuggestions}
               onApply={applyAiSuggestion}

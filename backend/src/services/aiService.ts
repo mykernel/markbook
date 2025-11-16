@@ -1,6 +1,7 @@
 import { BookmarkRepository } from '../repositories/BookmarkRepository';
 import { FolderRepository } from '../repositories/FolderRepository';
 import { TagRepository } from '../repositories/TagRepository';
+import { FolderService } from './folderService';
 
 export interface AiSuggestion {
   bookmarkId: number;
@@ -11,13 +12,47 @@ export interface AiSuggestion {
 
 const DEFAULT_MODEL = 'deepseek-chat';
 const DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions';
+const PROFILE_FOLDER_TEMPLATES: Array<{
+  keywords: string[];
+  folders: string[];
+}> = [
+  {
+    keywords: ['运维', 'devops', 'sre'],
+    folders: [
+      '学习资料/运维自动化',
+      '学习资料/监控告警',
+      '学习资料/容灾备份',
+      '效率工具/脚本库',
+    ],
+  },
+  {
+    keywords: ['前端', 'frontend', 'javascript', 'react'],
+    folders: [
+      '学习资料/前端实战',
+      '学习资料/UI/UX 灵感',
+      '效率工具/调试工具',
+    ],
+  },
+  {
+    keywords: ['产品', 'product', '设计'],
+    folders: [
+      '学习资料/产品案例',
+      '学习资料/用户研究',
+      '效率工具/需求管理',
+    ],
+  },
+];
 
 export class AiService {
   constructor(
     private bookmarkRepo: BookmarkRepository,
     private folderRepo: FolderRepository,
     private tagRepo: TagRepository
-  ) {}
+  ) {
+    this.folderService = new FolderService(folderRepo);
+  }
+
+  private folderService: FolderService;
 
   async generateOrganizeSuggestions(bookmarkIds?: number[], profile?: string): Promise<AiSuggestion[]> {
     const bookmarks = bookmarkIds && bookmarkIds.length > 0
@@ -26,6 +61,10 @@ export class AiService {
 
     if (!bookmarks.length) {
       return [];
+    }
+
+    if (profile) {
+      await this.ensureProfileFolders(profile);
     }
 
     const folders = await this.folderRepo.findAll();
@@ -154,5 +193,49 @@ ${JSON.stringify(
       console.error('Failed to parse AI response', error, cleaned);
     }
     throw new Error('无法解析 AI 返回的数据，请稍后重试');
+  }
+
+  private async ensureProfileFolders(profile: string): Promise<void> {
+    const lowerProfile = profile.toLowerCase();
+    const matchedTemplates = PROFILE_FOLDER_TEMPLATES.filter(template =>
+      template.keywords.some(keyword => lowerProfile.includes(keyword.toLowerCase()))
+    );
+
+    for (const template of matchedTemplates) {
+      for (const path of template.folders) {
+        try {
+          await this.ensureFolderPath(path);
+        } catch (error) {
+          console.warn('Failed to ensure profile folder', path, error);
+        }
+      }
+    }
+  }
+
+  private async ensureFolderPath(path: string): Promise<void> {
+    const parts = path
+      .split('/')
+      .map(part => part.trim())
+      .filter(Boolean);
+
+    if (parts.length === 0 || parts.length > 2) {
+      return;
+    }
+
+    let parentId: number | null = null;
+
+    for (const part of parts) {
+      const existing = await this.folderRepo.findByNameAndParent(part, parentId);
+      if (existing) {
+        parentId = existing.id;
+        continue;
+      }
+
+      const created = await this.folderService.createFolder({
+        name: part,
+        parentId: parentId ?? undefined,
+      });
+      parentId = created.id;
+    }
   }
 }

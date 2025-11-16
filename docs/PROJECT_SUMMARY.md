@@ -5,50 +5,29 @@
 ### ✅ 已完成的功能
 
 #### 后端 (Backend)
-- ✅ **完整的 Express + TypeScript 架构**
-  - 分层架构：Routes → Controllers → Services → Repositories
-  - BaseController 模式统一错误处理
-  - Zod 验证所有输入
-  - Prisma ORM + SQLite 数据库
+- ✅ **Express + TypeScript 分层架构**
+  - Routes → Controllers → Services → Repositories
+  - Zod 校验 + BaseController 统一错误处理
+  - Prisma ORM + SQLite，支持迁移、Studio
 
-- ✅ **书签管理 API**
-  - GET /api/bookmarks - 列表（分页）
-  - GET /api/bookmarks/:id - 详情
-  - POST /api/bookmarks - 创建
-  - PUT /api/bookmarks/:id - 更新
-  - DELETE /api/bookmarks/:id - 删除
-  - GET /api/bookmarks/search - 搜索
+- ✅ **书签/标签/文件夹增强**
+  - 书签分页 + 搜索 + 排序 + visitCount/lastVisitedAt + 批量操作
+  - 标签 CRUD + 总量限制（≤50）+ 自动合并
+  - 文件夹两级、数量限制（根 ≤5、二级 ≤20），AI/手动共用
 
-- ✅ **标签系统 API**
-  - 完整 CRUD 操作
-  - 自动创建标签
-  - 彩色标签支持
-
-- ✅ **文件夹系统 API**
-  - 完整 CRUD 操作
-  - 层级结构支持
-  - 根文件夹获取
+- ✅ **AI 整理 API**
+  - /api/ai/organize 接入 DeepSeek Chat Completion
+  - Prompt 结合职业偏好、当前结构、配额信息给出目录/标签建议
 
 #### 前端 (Frontend)
-- ✅ **React + TypeScript 应用**
-  - TanStack Router 文件路由
-  - TanStack Query (Suspense 模式)
-  - MUI v7 组件库
-  - 响应式设计
+- ✅ **React + Vite + TanStack Router/Query**
+  - Suspense 驱动的数据加载，API 客户端统一封装
+  - Material UI + Tailwind 结合布局，响应式支持
 
-- ✅ **书签管理界面**
-  - 书签列表（卡片式展示）
-  - 添加/编辑对话框
-  - 删除确认
-  - 分页导航
-  - 标签显示
-  - 文件夹关联
-
-- ✅ **现代 UI/UX**
-  - Suspense 加载状态
-  - 优雅的空状态
-  - Material Design 风格
-  - 移动端适配
+- ✅ **页面体验**
+  - 书签卡片/表格视图切换，批量操作条、关键词高亮
+  - 热门/最近访问统计卡片、访问记录更新
+  - AI 整理面板：输入职业偏好、查看建议、逐条或一键应用
 
 #### 数据库
 - ✅ **Prisma Schema**
@@ -77,11 +56,13 @@ bookmark/
 │   │   ├── controllers/         # 控制器层
 │   │   │   ├── BookmarkController.ts
 │   │   │   ├── TagController.ts
-│   │   │   └── FolderController.ts
+│   │   │   ├── FolderController.ts
+│   │   │   └── AiController.ts
 │   │   ├── services/            # 业务逻辑层
 │   │   │   ├── bookmarkService.ts
 │   │   │   ├── tagService.ts
-│   │   │   └── folderService.ts
+│   │   │   ├── folderService.ts
+│   │   │   └── aiService.ts
 │   │   ├── repositories/        # 数据访问层
 │   │   │   ├── BookmarkRepository.ts
 │   │   │   ├── TagRepository.ts
@@ -89,7 +70,8 @@ bookmark/
 │   │   ├── routes/              # 路由定义
 │   │   │   ├── bookmarkRoutes.ts
 │   │   │   ├── tagRoutes.ts
-│   │   │   └── folderRoutes.ts
+│   │   │   ├── folderRoutes.ts
+│   │   │   └── aiRoutes.ts
 │   │   ├── validators/          # Zod 验证
 │   │   │   ├── bookmarkValidator.ts
 │   │   │   ├── tagValidator.ts
@@ -115,15 +97,16 @@ bookmark/
 │   │   │   │   ├── api/         # API 客户端
 │   │   │   │   │   └── bookmarkApi.ts
 │   │   │   │   └── components/  # 书签组件
-│   │   │   │       ├── BookmarkList.tsx
-│   │   │   │       ├── BookmarkCard.tsx
-│   │   │   │       └── BookmarkDialog.tsx
+│   │   │   │       ├── BookmarkPageCN.tsx（含卡片/表格视图）
+│   │   │   │       ├── BookmarkDialogCN.tsx
+│   │   │   │       └── AiSuggestionDialog.tsx
+│   │   │   ├── ai/
+│   │   │   │   └── api/aiApi.ts # DeepSeek 调用封装
 │   │   │   ├── tags/            # 标签功能
-│   │   │   │   └── api/
-│   │   │   │       └── tagApi.ts
+│   │   │   │   └── api/tagApi.ts
 │   │   │   └── folders/         # 文件夹功能
-│   │   │       └── api/
-│   │   │           └── folderApi.ts
+│   │   │       ├── api/folderApi.ts
+│   │   │       └── components/FolderDialogCN.tsx
 │   │   ├── components/          # 共享组件
 │   │   │   └── SuspenseLoader/
 │   │   │       └── SuspenseLoader.tsx

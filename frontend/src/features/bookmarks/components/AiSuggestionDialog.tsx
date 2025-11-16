@@ -7,6 +7,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import type { AiSuggestion, Bookmark } from '~types';
 
 interface AiSuggestionDialogProps {
@@ -16,6 +17,8 @@ interface AiSuggestionDialogProps {
   bookmarks: Bookmark[];
   profile?: string;
   applyingAll: boolean;
+  existingFolders: string[];
+  existingTags: string[];
   onClose: () => void;
   onRefresh: () => void;
   onApply: (suggestion: AiSuggestion) => Promise<void>;
@@ -29,6 +32,8 @@ export const AiSuggestionDialog: React.FC<AiSuggestionDialogProps> = ({
   bookmarks,
   profile,
   applyingAll,
+  existingFolders,
+  existingTags,
   onClose,
   onRefresh,
   onApply,
@@ -36,6 +41,9 @@ export const AiSuggestionDialog: React.FC<AiSuggestionDialogProps> = ({
 }) => {
   const getBookmarkTitle = (id: number) =>
     bookmarks.find(b => b.id === id)?.title ?? `书签 #${id}`;
+
+  const folderSet = new Set(existingFolders.map(name => name.toLowerCase()));
+  const tagSet = new Set(existingTags.map(tag => tag.toLowerCase()));
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -74,39 +82,57 @@ export const AiSuggestionDialog: React.FC<AiSuggestionDialogProps> = ({
                 {applyingAll ? '正在应用...' : '一键应用全部'}
               </Button>
             </div>
-            {suggestions.map(item => (
-              <div
-                key={item.bookmarkId}
-                className="rounded-lg border p-4 space-y-2 text-sm"
-              >
-                <div className="font-medium">{getBookmarkTitle(item.bookmarkId)}</div>
-                <div className="text-muted-foreground flex flex-col gap-1">
-                  {item.recommendedFolder && (
-                    <div>
-                      <span className="font-medium">建议文件夹：</span>
-                      <span>{item.recommendedFolder}</span>
-                    </div>
-                  )}
-                  {item.recommendedTags && item.recommendedTags.length > 0 && (
-                    <div>
-                      <span className="font-medium">建议标签：</span>
-                      <span>{item.recommendedTags.join(', ')}</span>
-                    </div>
-                  )}
-                  {item.reason && (
-                    <div>
-                      <span className="font-medium">原因：</span>
-                      <span>{item.reason}</span>
-                    </div>
-                  )}
+            {suggestions.map(item => {
+              const folderName = item.recommendedFolder?.trim();
+              const isNewFolder =
+                folderName && !folderSet.has(folderName.toLowerCase());
+              return (
+                <div
+                  key={item.bookmarkId}
+                  className="rounded-lg border p-4 space-y-3 text-sm"
+                >
+                  <div className="font-medium text-foreground">
+                    {getBookmarkTitle(item.bookmarkId)}
+                  </div>
+                  <div className="flex flex-col gap-1 text-muted-foreground">
+                    {folderName && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">目录：</span>
+                        <span className="text-foreground">{folderName}</span>
+                        {isNewFolder && (
+                          <Badge variant="secondary" className="text-xs">
+                            新建
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                    {item.recommendedTags && item.recommendedTags.length > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">标签：</span>
+                        {item.recommendedTags.map(tag => (
+                          <Badge key={tag} variant="outline" className="text-xs">
+                            {tag}
+                            {!tagSet.has(tag.toLowerCase()) && (
+                              <span className="ml-1 text-primary">新</span>
+                            )}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    {item.reason && (
+                      <p className="text-xs text-muted-foreground leading-snug">
+                        原因：{item.reason}
+                      </p>
+                    )}
+                  </div>
+                  <div className="pt-2">
+                    <Button size="sm" onClick={() => onApply(item)}>
+                      应用
+                    </Button>
+                  </div>
                 </div>
-                <div className="pt-2">
-                  <Button size="sm" onClick={() => onApply(item)}>
-                    应用
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
