@@ -1,2 +1,0 @@
-backend:build:cd /root/bookmark/backend && npm run build
-backend:tsc:cd /root/bookmark/backend && npx tsc --noEmit
