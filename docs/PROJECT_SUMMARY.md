@@ -1,203 +1,91 @@
-# 📚 书签管理系统 - 项目总结
+# 📚 书签管理系统 · 项目总结
 
-## 🎉 项目完成状态
-
-### ✅ 已完成的功能
-
-#### 后端 (Backend)
-- ✅ **Express + TypeScript 分层架构**
-  - Routes → Controllers → Services → Repositories
-  - Zod 校验 + BaseController 统一错误处理
-  - Prisma ORM + SQLite，支持迁移、Studio
-
-- ✅ **书签/标签/文件夹增强**
-  - 书签分页 + 搜索 + 排序 + visitCount/lastVisitedAt + 批量操作
-  - 标签 CRUD + 总量限制（≤50）+ 自动合并
-  - 文件夹两级、数量限制（根 ≤5、二级 ≤20），AI/手动共用
-
-- ✅ **AI 整理 API**
-  - /api/ai/organize 接入 DeepSeek Chat Completion
-  - Prompt 结合职业偏好、当前结构、配额信息给出目录/标签建议
-
-#### 前端 (Frontend)
-- ✅ **React + Vite + TanStack Router/Query**
-  - Suspense 驱动的数据加载，API 客户端统一封装
-  - Material UI + Tailwind 结合布局，响应式支持
-
-- ✅ **页面体验**
-  - 书签卡片/表格视图切换，批量操作条、关键词高亮
-  - 热门/最近访问统计卡片、访问记录更新
-  - AI 整理面板：输入职业偏好、查看建议、逐条或一键应用
-
-#### 数据库
-- ✅ **Prisma Schema**
-  - Bookmark（书签）
-  - Tag（标签）
-  - Folder（文件夹）
-  - BookmarkTag（多对多关系）
-
-#### 文档
-- ✅ **完整文档**
-  - README.md - 项目介绍
-  - START.md - 快速启动指南
-  - DEVELOPMENT.md - 开发指南
-  - PROJECT_SUMMARY.md - 本文件
-
----
-
-## 📁 项目结构
-
-```
-bookmark/
-├── backend/                      # 后端服务 (Node.js + Express)
-│   ├── src/
-│   │   ├── config/              # 数据库配置
-│   │   │   └── database.ts      # Prisma 单例
-│   │   ├── controllers/         # 控制器层
-│   │   │   ├── BookmarkController.ts
-│   │   │   ├── TagController.ts
-│   │   │   ├── FolderController.ts
-│   │   │   └── AiController.ts
-│   │   ├── services/            # 业务逻辑层
-│   │   │   ├── bookmarkService.ts
-│   │   │   ├── tagService.ts
-│   │   │   ├── folderService.ts
-│   │   │   └── aiService.ts
-│   │   ├── repositories/        # 数据访问层
-│   │   │   ├── BookmarkRepository.ts
-│   │   │   ├── TagRepository.ts
-│   │   │   └── FolderRepository.ts
-│   │   ├── routes/              # 路由定义
-│   │   │   ├── bookmarkRoutes.ts
-│   │   │   ├── tagRoutes.ts
-│   │   │   ├── folderRoutes.ts
-│   │   │   └── aiRoutes.ts
-│   │   ├── validators/          # Zod 验证
-│   │   │   ├── bookmarkValidator.ts
-│   │   │   ├── tagValidator.ts
-│   │   │   └── folderValidator.ts
-│   │   ├── middleware/          # 中间件
-│   │   │   └── errorHandler.ts
-│   │   ├── types/               # 类型定义
-│   │   │   └── index.ts
-│   │   ├── utils/               # 工具类
-│   │   │   └── BaseController.ts
-│   │   ├── app.ts               # Express 应用配置
-│   │   └── server.ts            # HTTP 服务器
-│   ├── prisma/
-│   │   └── schema.prisma        # 数据库模型
-│   ├── .env                     # 环境变量
-│   ├── package.json
-│   └── tsconfig.json
-│
-├── frontend/                     # 前端应用 (React + Vite)
-│   ├── src/
-│   │   ├── features/            # 功能模块
-│   │   │   ├── bookmarks/       # 书签功能
-│   │   │   │   ├── api/         # API 客户端
-│   │   │   │   │   └── bookmarkApi.ts
-│   │   │   │   └── components/  # 书签组件
-│   │   │   │       ├── BookmarkPageCN.tsx（含卡片/表格视图）
-│   │   │   │       ├── BookmarkDialogCN.tsx
-│   │   │   │       └── AiSuggestionDialog.tsx
-│   │   │   ├── ai/
-│   │   │   │   └── api/aiApi.ts # DeepSeek 调用封装
-│   │   │   ├── tags/            # 标签功能
-│   │   │   │   └── api/tagApi.ts
-│   │   │   └── folders/         # 文件夹功能
-│   │   │       ├── api/folderApi.ts
-│   │   │       └── components/FolderDialogCN.tsx
-│   │   ├── components/          # 共享组件
-│   │   │   └── SuspenseLoader/
-│   │   │       └── SuspenseLoader.tsx
-│   │   ├── routes/              # 页面路由
-│   │   │   ├── __root.tsx       # 根布局
-│   │   │   └── index.tsx        # 首页
-│   │   ├── lib/                 # 工具库
-│   │   │   └── apiClient.ts     # Axios 实例
-│   │   ├── types/               # TypeScript 类型
-│   │   │   └── index.ts
-│   │   └── main.tsx             # 应用入口
-│   ├── index.html
-│   ├── vite.config.ts
-│   ├── package.json
-│   └── tsconfig.json
-│
-├── .claude/                      # Claude Code 配置
-│   └── skills/
-│       └── skill-rules.json     # 技能激活规则
-│
-├── package.json                  # 根工作区配置
-├── .gitignore
-├── README.md                     # 项目文档
-├── START.md                      # 快速启动
-├── DEVELOPMENT.md                # 开发指南
-└── PROJECT_SUMMARY.md            # 本文件
-```
-
----
-
-## 🚀 快速启动
-
-### 方式 1: 分别启动（推荐用于开发）
-
-```bash
-# 终端 1 - 启动后端
-cd backend
-npm run dev
-
-# 终端 2 - 启动前端
-cd frontend
-npm run dev
-```
-
-### 方式 2: 同时启动
-
-```bash
-# 在根目录
-npm run dev
-```
-
-访问：
-- 前端：http://localhost:3000
-- 后端：http://localhost:3001
-- API Health: http://localhost:3001/api/health
-- Prisma Studio: `cd backend && npm run prisma:studio`
-
----
-
-## 🎯 核心特性
-
-### 技术亮点
-1. **分层架构** - 清晰的职责分离
-2. **类型安全** - 全栈 TypeScript
-3. **现代前端** - Suspense + TanStack 生态
-4. **验证机制** - Zod schema 验证
-5. **优雅错误处理** - BaseController 统一处理
-6. **响应式设计** - MUI Grid 系统
-
-### 架构优势
-- **后端**：可维护、可测试、易扩展
-- **前端**：高性能、优秀 DX、类型安全
-- **数据库**：Prisma 提供类型安全的 ORM
-- **验证**：Zod 在前后端复用 schema
-
----
-
-## 🔧 技术栈详情
-
-### 后端
-| 技术 | 版本 | 用途 |
+## 状态速览
+| 模块 | 进度 | 说明 |
 |------|------|------|
-| Node.js | 18+ | 运行时环境 |
-| Express | ^4.18 | Web 框架 |
-| TypeScript | ^5.3 | 类型系统 |
-| Prisma | ^5.22 | ORM |
-| SQLite | - | 数据库 |
-| Zod | ^3.22 | 验证库 |
-| CORS | ^2.8 | 跨域支持 |
+| 后端 API | ✅ | 书签/标签/文件夹/AI/批量操作全部可用，含数量限制与访问统计。 |
+| 前端界面 | ✅ | 固定侧栏 + 粘性工具栏 + 粘性右侧面板；表格/卡片视图、批量工具、AI 整理面板。 |
+| 数据库 | ✅ | Prisma schema（Bookmark/Tag/Folder/BookmarkTag），SQLite 开发环境可直接使用。 |
+| 文档 | ✅ | README、START、DEVELOPMENT、PROJECT_SUMMARY、CHECKLIST 一应俱全。 |
+
+## 完成的关键能力
+### 后端
+- 全栈 TypeScript，Express 分层（Routes → Controllers → Services → Repositories）。
+- Zod 输入校验 + BaseController 统一响应；`asyncWrapper` 负责捕获异步错误。
+- Prisma + SQLite：分页、排序、搜索、visitCount/lastVisitedAt 追踪。
+- 标签/文件夹约束：标签总数 ≤ 50；文件夹两级，根 ≤ 5、二级 ≤ 20；AI 与手动逻辑复用同一校验。
+- `/api/ai/organize`：DeepSeek Chat Completion；支持职业偏好、自动新建目录/标签（受配额限制）、逐条/批量应用。
 
 ### 前端
+- React 18 + Vite + TanStack Router/Query（Suspense）；shadcn/ui + Tailwind + 少量 MUI 图标。
+- 书签页（`BookmarkPageCN`）：
+  - 固定侧栏（文件夹/标签/配额提示），顶部粘性工具栏（搜索、排序、视图、常用合集），右侧粘性面板（访问洞察 + 智能整理 + 快捷提示）。
+  - 默认表格视图（统一列宽、访问指标区对齐），支持卡片视图切换；空状态提示和“常用合集”快捷入口。
+  - 批量操作条（删除/移动/批量标签/AI 建议）、AI 对话框、智能整理侧栏（预览建议、一键应用）。
+- 本地化偏好：排序、视图、职业输入会写入 `localStorage`，方便回访。
+
+### 数据与 AI
+- Visit 记录接口 `/api/bookmarks/:id/visit`，前端点击标题即访问并上报。
+- AI Prompt 结合：职业、选中书签元信息、当前标签/文件夹配额、目录结构，输出建议并允许自动建目录。
+- AI 建议既可在对话框中查看，也可在右侧面板预览；支持“应用全部”。
+
+## 目录摘要
+```
+backend/
+  src/
+    config/database.ts
+    controllers/(Bookmark|Tag|Folder|Ai)Controller.ts
+    services/(bookmark|tag|folder|ai)Service.ts
+    repositories/(Bookmark|Tag|Folder)Repository.ts
+    routes/(bookmark|tag|folder|ai)Routes.ts
+    validators/(bookmark|tag|folder)Validator.ts
+    middleware/errorHandler.ts
+    utils/BaseController.ts
+  prisma/schema.prisma
+frontend/
+  src/features/bookmarks/components/
+    BookmarkPageCN.tsx
+    BookmarkDialogCN.tsx
+    BookmarkTableRow.tsx
+    AiSuggestionDialog.tsx
+    SmartOrganizePanel.tsx
+    InsightsPanel.tsx
+    QuickTipsPanel.tsx
+  src/components/Sidebar.tsx
+  src/lib/apiClient.ts
+docs/ (README, START, DEVELOPMENT, PROJECT_SUMMARY, CHECKLIST)
+```
+
+## 启动方式
+```bash
+npm install
+npm run dev          # 同时启动前后端
+# 或分别启动
+cd backend && npm run dev
+cd frontend && npm run dev
+```
+调试辅助：`npm run prisma:studio` 打开 SQLite；`.env` 中配置 `DEEPSEEK_API_KEY`。
+
+## 技术栈
+| 层 | 工具 |
+|----|------|
+| 前端 | React 18 · TypeScript · Vite · TanStack Router/Query · Tailwind · shadcn/ui · MUI Icons |
+| 后端 | Node.js 18 · Express · Prisma · SQLite · Zod · Axios (调用 DeepSeek) |
+| AI | DeepSeek Chat Completion（通过 `aiService` 调用） |
+
+## 当前已知的改进方向
+1. **导入/导出增强**：URL 去重提示、字段选择、CSV/JSON/压缩包导出。
+2. **标签管理视图**：合并、重命名、删除空标签，搭配搜索/排序。
+3. **智能合集**：按标签/域名/访问频率自动聚合，并支持 AI 建议合集。
+4. **数据导出**：按周/月导出统计报表或仪表盘的原始数据。
+5. **更丰富的 AI Prompt 模板**：根据不同职业预设模板，支持多语言描述。
+
+## 交付内容
+- 可运行的前后端代码（含批量操作、AI 整理、访问洞察、粘性布局）。
+- 完整文档与启动指南。
+- 深度集成 DeepSeek 的书签整理体验（可自动新建目录与标签）。
+
+> 该系统目前已满足“桌面端优先 + AI 智能整理 + 批量操作 + 访问洞察”的核心目标，可在此基础上继续扩展导出/智能合集等功能。 
 | 技术 | 版本 | 用途 |
 |------|------|------|
 | React | ^18.2 | UI 框架 |

@@ -1,203 +1,71 @@
 # 🚀 快速启动指南
 
-## 项目概览
-
-这是一个现代化的书签管理系统，采用全栈 TypeScript 开发。
-
-### 技术栈
-- **后端**: Node.js + Express + Prisma + SQLite
-- **前端**: React + Vite + TanStack Router/Query + MUI v7
-- **架构**: 分层架构（Routes → Controllers → Services → Repositories）
-
----
-
-## 📋 启动步骤
-
-### 1. 安装依赖（如未安装）
-
+## 1. 安装依赖
 ```bash
-# 根目录安装
+cd /root/bookmark
 npm install
 ```
 
-### 2. 启动后端服务
-
+## 2. 配置环境变量
 ```bash
-# 在一个终端窗口中
+cp backend/.env.example backend/.env
+```
+填写 `DEEPSEEK_API_KEY`，用于 AI 整理接口。
+
+## 3. 启动服务
+```bash
+# 启动后端（http://localhost:3001）
 cd backend
 npm run dev
-```
 
-后端服务将运行在：`http://localhost:3001`
-
-API 文档：
-- Health Check: `http://localhost:3001/api/health`
-- Bookmarks: `http://localhost:3001/api/bookmarks`
-- Tags: `http://localhost:3001/api/tags`
-- Folders: `http://localhost:3001/api/folders`
-
-### 3. 启动前端应用
-
-```bash
-# 在另一个终端窗口中
+# 另一个终端启动前端（http://localhost:3000）
 cd frontend
 npm run dev
 ```
+或在根目录执行 `npm run dev` 同时启动前后端。
 
-前端应用将运行在：`http://localhost:3000`
+## 4. 常用端点
+- `GET http://localhost:3001/api/health`
+- `GET http://localhost:3001/api/bookmarks`
+- `POST http://localhost:3001/api/ai/organize`
+- Prisma Studio：`cd backend && npm run prisma:studio`
 
-### 4. 同时启动（可选）
+## 核心模块速览
+- **固定侧栏**：文件夹/标签筛选、配额显示。
+- **粘性工具栏**：搜索、排序、视图切换、常用合集入口（最近访问/高频/置顶/AI）。
+- **书签列表**：默认表格视图，支持卡片切换、关键词高亮、批量操作条。
+- **右侧面板**：访问洞察（热门/最近）、AI 智能整理面板、快捷操作提示。
+- **AI 整理**：支持职业输入、自动新建目录/标签（受配额限制）、单条或一键应用建议。
 
-如果希望同时启动前后端：
-
-```bash
-# 在根目录
-npm run dev
+## 项目结构（摘要）
+```
+backend/  # Express + Prisma + Zod + DeepSeek
+frontend/ # React + Vite + TanStack Router/Query + Tailwind + MUI + shadcn/ui
+docs/     # 本文档及开发/总结材料
 ```
 
----
+## 常见命令
+| 位置 | 命令 | 说明 |
+|------|------|------|
+| 根目录 | `npm run dev` | 同时启动前后端 |
+| 根目录 | `npm run build` | 构建前后端 |
+| backend | `npm run prisma:migrate` | 运行迁移 |
+| backend | `npm run prisma:studio` | 可视化数据库 |
+| frontend | `npm run build` | 生成前端产物 |
 
-## 🎯 核心功能
+## 迭代记录（摘要）
+| 版本 | 核心改动 |
+|------|-----------|
+| V1 | 搭建基础 CRUD、批量操作、AI 整理接口。 |
+| V2 | 引入固定侧栏、粘性顶部工具栏、访问洞察卡片。 |
+| V3 | 新增智能整理侧栏、常用合集快捷入口。 |
+| V4 | 重构表格/卡片视图，添加置顶按钮与批量置顶。 |
+| V5 | 文档与粘性布局全面更新，确保桌面首屏聚焦书签列表。 |
 
-### ✅ 已实现
-1. **书签管理**
-   - ✅ 添加 / 编辑 / 删除书签，记录访问次数与最近访问时间
-   - ✅ 批量删除 / 移动 / 批量增删标签
-   - ✅ 卡片 / 表格视图切换，支持关键词高亮与排序（收藏时间 / 访问次数 / 最近访问）
-
-2. **标签与文件夹**
-   - ✅ 标签总量上限 50，重复自动合并
-   - ✅ 文件夹两级结构：一级 ≤5、二级 ≤20，AI/用户操作都会校验
-   - ✅ Sidebar 可按文件夹/标签筛选，批量操作可树形选择目标目录
-
-3. **AI 与统计**
-   - ✅ DeepSeek AI 整理建议：可输入职业偏好（如“运维工程师”）并一键应用
-   - ✅ 热门书签、最近访问统计卡片
-   - ✅ 搜索框 + 视图切换 + 职业输入统一位于工具栏
-
-### 🔄 待规划
-- [ ] 导入导出增强（去重、字段自定义、CSV/JSON）
-- [ ] 标签管理界面（合并、重命名、清理空标签）
-- [ ] 暗色模式 / 主题切换
-- [ ] 拖拽排序、快捷收藏
-- [ ] 更丰富的职业模板与 AI 整理策略
-
----
-
-## 📂 项目结构
-
-```
-bookmark/
-├── backend/                  # 后端服务
-│   ├── src/
-│   │   ├── config/          # 数据库配置
-│   │   ├── controllers/     # 控制器
-│   │   ├── services/        # 业务逻辑
-│   │   ├── repositories/    # 数据访问层
-│   │   ├── routes/          # 路由定义
-│   │   ├── validators/      # Zod 验证
-│   │   ├── middleware/      # 中间件
-│   │   ├── types/           # 类型定义
-│   │   ├── utils/           # 工具类
-│   │   ├── app.ts           # Express 应用
-│   │   └── server.ts        # HTTP 服务器
-│   ├── prisma/
-│   │   └── schema.prisma    # 数据库模型
-│   └── package.json
-│
-├── frontend/                 # 前端应用
-│   ├── src/
-│   │   ├── features/        # 功能模块
-│   │   │   ├── bookmarks/   # 书签功能
-│   │   │   ├── tags/        # 标签功能
-│   │   │   └── folders/     # 文件夹功能
-│   │   ├── components/      # 共享组件
-│   │   ├── routes/          # 页面路由
-│   │   ├── lib/             # API 客户端
-│   │   ├── types/           # TypeScript 类型
-│   │   └── main.tsx         # 入口文件
-│   ├── index.html
-│   ├── vite.config.ts
-│   └── package.json
-│
-├── package.json             # 根工作区配置
-├── README.md                # 详细文档
-└── START.md                 # 本文件
-```
-
----
-
-## 🔧 开发工具
-
-### Prisma Studio（数据库可视化）
-
-```bash
-cd backend
-npm run prisma:studio
-```
-
-在浏览器中打开：`http://localhost:5555`
-
-### 数据库迁移
-
-```bash
-cd backend
-npm run prisma:migrate
-```
-
----
-
-## 📡 API 端点
-
-### 书签 (Bookmarks)
-- `GET /api/bookmarks` - 获取所有书签（分页 + 排序）
-- `GET /api/bookmarks/search` - 搜索书签（支持关键词高亮、筛选）
-- `GET /api/bookmarks/:id` - 获取单个书签
-- `POST /api/bookmarks` - 创建书签
-- `PUT /api/bookmarks/:id` - 更新书签
-- `DELETE /api/bookmarks/:id` - 删除书签
-- `POST /api/bookmarks/:id/visit` - 记录访问次数
-- `POST /api/bookmarks/bulk/actions` - 批量删除/移动/增删标签
-
-### 标签 (Tags)
-- `GET /api/tags` - 获取所有标签
-- `GET /api/tags/:id` - 获取单个标签
-- `POST /api/tags` - 创建标签
-- `PUT /api/tags/:id` - 更新标签
-- `DELETE /api/tags/:id` - 删除标签
-
-### 文件夹 (Folders)
-- `GET /api/folders` - 获取所有文件夹
-- `GET /api/folders/roots` - 获取根文件夹
-- `GET /api/folders/:id` - 获取单个文件夹
-- `POST /api/folders` - 创建文件夹
-- `PUT /api/folders/:id` - 更新文件夹
-- `DELETE /api/folders/:id` - 删除文件夹
-
-### AI 智能整理
-- `POST /api/ai/organize` - 提交书签 ID 列表与职业偏好，返回目录/标签建议
-
----
-
-## 🎨 UI 特性
-
-- ✅ 响应式设计（移动端友好）
-- ✅ Material-UI v7 组件库
-- ✅ 卡片式书签展示
-- ✅ 模态对话框表单
-- ✅ Suspense 加载状态
-- ✅ 优雅的空状态提示
-
----
-
-## 🐛 故障排查
-
-### 后端启动失败
-1. 检查 Node.js 版本（需要 18+）
-2. 确认端口 3001 未被占用
-3. 检查 `backend/.env` 文件是否存在
-
-### 前端启动失败
+## 故障排查
+- **后端无法启动**：检查 Node.js ≥ 18、端口 3001、`backend/.env` 是否配置。
+- **前端 404**：确认 `frontend/.env` 无需配置，API 地址默认指向本地 3001。
+- **AI 接口失败**：确认 DeepSeek Key 正确、服务器可访问外网。
 1. 确认已安装依赖：`npm install`
 2. 检查端口 3000 未被占用
 3. 确保后端服务正在运行

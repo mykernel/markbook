@@ -1,297 +1,72 @@
 # 开发指南
 
-## 代码规范
+## 目录结构约定
+- `backend/`：Express + Prisma 分层架构（Routes → Controllers → Services → Repositories）。
+- `frontend/`：按 feature 划分（bookmarks/tags/folders/ai），共享组件放在 `src/components`。
+- `docs/`：系统说明（当前文件、START、README、PROJECT_SUMMARY、CHECKLIST）。
 
-### 后端开发规范
+## 后端规范
+1. **分层**：Controller 中禁止直接访问 Prisma；只依赖 Service。Service 只依赖 Repository。
+2. **错误处理**：Controller 继承 `BaseController`，统一 `handleSuccess/handleError`。路由使用 `asyncWrapper`。
+3. **验证**：所有请求体由 Zod schema 校验（位于 `validators/`）。暴露的 API 必须有对应 schema。
+4. **AI 接口**：`aiService` 调用 DeepSeek，需读取 `.env` 中的 `DEEPSEEK_API_KEY`。调用失败返回合理错误信息。
+5. **数量限制**：在 Service 层检查标签总量、文件夹层级/数量限制，AI 及批量操作都需复用相同逻辑。
+6. **Prisma**：通过 `config/database.ts` 单例获取客户端；禁止在请求中频繁实例化。
 
-遵循 `backend-dev-guidelines` 技能指南：
+## 前端规范
+1. **数据获取**：统一使用 `useSuspenseQuery` / `useMutation`，API 客户端封装在 `features/*/api`。
+2. **状态管理**：组件内部使用 `useState`/`useReducer`；跨组件数据通过 query cache 或 props。避免额外全局 store。
+3. **布局**：桌面优先，不额外为移动端适配。保持固定侧栏（`Sidebar`）宽 288px，顶部工具栏 `sticky top-0`，右侧面板 `sticky top-28`。
+4. **样式**：Tailwind + shadcn/ui 组件为主，可辅以 MUI；确保暗色模式兼容（使用 `text-slate-*`、`dark:` 类）。
+5. **可访问性**：按钮/链接提供清晰的 aria label（如 AI 面板中“应用全部”）。
+6. **AI 交互**：`SmartOrganizePanel` 负责触发/展示，`AiSuggestionDialog` 管理详情。新增功能时保持这两个入口同步。
+7. **分页/筛选**：`BookmarkPageCN` 中任何状态更改需重置 `page=1`，并在 `localStorage` 记录排序、视图模式、职业偏好。
 
-1. **分层架构**
-   - Routes: 仅路由定义
-   - Controllers: 继承 BaseController，处理 HTTP 请求
-   - Services: 业务逻辑
-   - Repositories: 数据访问
+## 添加后端端点流程
+1. **Schema**：如需，更新 `prisma/schema.prisma` 并运行 `npm run prisma:migrate`。
+2. **Validator**：在 `validators/` 声明 Zod schema（create/update 分离）。
+3. **Repository**：封装数据库读写。
+4. **Service**：组合 Repository，包含业务规则（配额校验、AI 限制等）。
+5. **Controller + Route**：Controller 继承 `BaseController`，Route 中注入依赖，使用 `asyncWrapper`。
+6. **测试**：通过 Thunder Client/Postman 或前端页面验证；必要时补充单元测试（Vitest/ts-node）。
 
-2. **错误处理**
-   - 所有控制器方法使用 try-catch
-   - 使用 BaseController 的错误处理方法
-   - 统一的 API 响应格式
-
-3. **验证**
-   - 使用 Zod 验证所有输入
-   - 在 `validators/` 目录定义 schema
-
-4. **依赖注入**
-   - 在路由文件中手动注入依赖
-   - Service 依赖 Repository
-   - Controller 依赖 Service
-
-### 前端开发规范
-
-遵循 `frontend-dev-guidelines` 技能指南：
-
-1. **组件模式**
-   - 使用 `React.FC<Props>` 类型
-   - 功能组件放在 `features/` 目录
-   - 共享组件放在 `components/` 目录
-
-2. **数据获取**
-   - 使用 `useSuspenseQuery` 获取数据
-   - API 调用封装在 `features/{feature}/api/` 中
-   - 使用 Suspense 边界处理加载状态
-
-3. **路由**
-   - 使用 TanStack Router 文件系统路由
-   - 页面组件懒加载
-   - 路由文件放在 `routes/` 目录
-
-4. **样式**
-   - 使用 MUI v7 组件
-   - `sx` prop 进行样式定制
-   - 响应式设计使用 Grid size prop
-
-## 添加新功能
-
-### 添加新的 API 端点
-
-1. **定义数据模型**（如需要）
-```prisma
-// backend/prisma/schema.prisma
-model NewFeature {
-  id        Int      @id @default(autoincrement())
-  name      String
-  createdAt DateTime @default(now())
-}
-```
-
-2. **创建 Validator**
-```typescript
-// backend/src/validators/newFeatureValidator.ts
-import { z } from 'zod';
-
-export const createNewFeatureSchema = z.object({
-  name: z.string().min(1).max(255),
-});
-```
-
-3. **创建 Repository**
-```typescript
-// backend/src/repositories/NewFeatureRepository.ts
-import { prisma } from '../config/database';
-
-export class NewFeatureRepository {
-  async findAll() {
-    return prisma.newFeature.findMany();
-  }
-  // ... CRUD methods
-}
-```
-
-4. **创建 Service**
-```typescript
-// backend/src/services/newFeatureService.ts
-import { NewFeatureRepository } from '../repositories/NewFeatureRepository';
-
-export class NewFeatureService {
-  constructor(private repo: NewFeatureRepository) {}
-
-  async getAll() {
-    return this.repo.findAll();
-  }
-  // ... business logic
-}
-```
-
-5. **创建 Controller**
-```typescript
-// backend/src/controllers/NewFeatureController.ts
-import { BaseController } from '../utils/BaseController';
-
-export class NewFeatureController extends BaseController {
-  constructor(private service: NewFeatureService) {
-    super();
-  }
-
-  async getAll(req: Request, res: Response): Promise<void> {
-    try {
-      const data = await this.service.getAll();
-      this.handleSuccess(res, data);
-    } catch (error) {
-      this.handleError(error, res, 'NewFeatureController.getAll');
-    }
-  }
-}
-```
-
-6. **定义 Routes**
-```typescript
-// backend/src/routes/newFeatureRoutes.ts
-import { Router } from 'express';
-import { NewFeatureController } from '../controllers/NewFeatureController';
-import { asyncWrapper } from '../middleware/errorHandler';
-
-const router = Router();
-const controller = new NewFeatureController(/* DI */);
-
-router.get('/', asyncWrapper((req, res) => controller.getAll(req, res)));
-
-export default router;
-```
-
-7. **注册路由**
-```typescript
-// backend/src/app.ts
-import newFeatureRoutes from './routes/newFeatureRoutes';
-
-app.use('/api/new-feature', newFeatureRoutes);
-```
-
-### 添加新的前端功能
-
-1. **创建 API 客户端**
-```typescript
-// frontend/src/features/new-feature/api/newFeatureApi.ts
-import { apiClient } from '@/lib/apiClient';
-
-export const newFeatureApi = {
-  getAll: async () => {
-    const response = await apiClient.get('/new-feature');
-    return response.data.data;
-  },
-};
-```
-
-2. **创建组件**
-```typescript
-// frontend/src/features/new-feature/components/NewFeatureList.tsx
-import React from 'react';
-import { useSuspenseQuery } from '@tanstack/react-query';
-import { newFeatureApi } from '../api/newFeatureApi';
-import { SuspenseLoader } from '~components/SuspenseLoader/SuspenseLoader';
-
-const NewFeatureListContent: React.FC = () => {
-  const { data } = useSuspenseQuery({
-    queryKey: ['new-feature'],
-    queryFn: () => newFeatureApi.getAll(),
-  });
-
-  return <div>{/* render data */}</div>;
-};
-
-const NewFeatureList: React.FC = () => (
-  <SuspenseLoader>
-    <NewFeatureListContent />
-  </SuspenseLoader>
-);
-
-export default NewFeatureList;
-```
-
-3. **创建路由**
-```typescript
-// frontend/src/routes/new-feature/index.tsx
-import { createFileRoute } from '@tanstack/react-router';
-import { lazy } from 'react';
-
-const NewFeatureList = lazy(() => import('@/features/new-feature/components/NewFeatureList'));
-
-export const Route = createFileRoute('/new-feature/')({
-  component: () => <NewFeatureList />,
-});
-```
+## 添加前端功能流程
+1. **API**：在 `features/<feature>/api` 中添加方法，返回数据使用类型定义（`src/types`）。
+2. **组件**：新界面放在 `features/<feature>/components`。如需 Suspense，创建 `ComponentContent` + 包装 `SuspenseLoader`。
+3. **状态/上下文**：优先复用现有 hooks（如 `handleQuickCollection`）。新状态使用 `useMemo/useCallback` 优化。
+4. **交互一致性**：按钮风格使用 UI 库 `Button`、输入框用 `Input`、下拉使用 `Select`。表格行组件化（参考 `BookmarkTableRow`）。
+5. **样式**：保持内容宽度 `max-w-[1400px]`、统一内边距 `px-10 py-10`。表格和卡片使用同类圆角/阴影。
+6. **可扩展性**：右侧面板、批量工具条等复用现有 Section 样式，便于未来加入“智能合集”/“Load More”等功能。
 
 ## 测试
-
-### 后端测试
-
-```bash
-cd backend
-# TODO: 添加测试框架
-npm test
-```
-
-### 前端测试
-
-```bash
-cd frontend
-# TODO: 添加测试框架
-npm test
-```
+- **前端**：`cd frontend && npm run test`（Vitest）。主要覆盖 hooks/component 逻辑。
+- **后端**：尚未配置自动化测试，推荐使用 `ts-node` + Vitest/ Jest；当前以手动验证为主。
+- **构建验证**：`npm run build`（根目录）会执行前端 + 后端 TypeScript build。
 
 ## 数据库操作
+- **查看/调试**：`cd backend && npm run prisma:studio`。
+- **迁移**：`npm run prisma:migrate`；生成 Client 使用 `npm run prisma:generate`。
+- **重置**：删除 `backend/prisma/dev.db` 后重新 `npm run prisma:migrate`，注意确保 `.gitignore` 已排除该文件。
 
-### 修改数据库结构
+## 调试建议
+- **后端**：使用 `NODE_OPTIONS=--inspect`; 通过日志输出请求体、响应；AI 调用记录 prompt/response 片段（注意脱敏）。
+- **前端**：启用 React DevTools + TanStack Query Devtools；观察 `localStorage`（view mode、sort、profile）是否按预期更新。
+- **UI**：在浏览器中检查粘性布局（侧栏/工具栏/右侧面板），确保滚动行为符合预期。
 
-1. 编辑 `backend/prisma/schema.prisma`
-2. 运行迁移：
-```bash
-cd backend
-npm run prisma:migrate
-```
-
-### 查看数据
-
-```bash
-cd backend
-npm run prisma:studio
-```
-
-## 调试技巧
-
-### 后端调试
-- 使用 `console.log` 或调试器
-- 检查 API 响应格式
-- 使用 Postman/Thunder Client 测试端点
-
-### 前端调试
-- React DevTools
-- TanStack Query DevTools（可添加）
-- Network 面板查看 API 调用
-
-## 性能优化
-
-### 后端
-- 数据库索引优化
-- 分页查询大数据集
-- 缓存常用查询结果
-
-### 前端
-- 使用 `useMemo` 缓存计算
-- 使用 `useCallback` 优化回调
-- 懒加载非关键组件
-- 图片懒加载
-
-## 部署
-
-### 生产构建
-
-```bash
-# 构建前端
-cd frontend
-npm run build
-
-# 构建后端
-cd backend
-npm run build
-```
-
-### 环境变量
-
-生产环境需要配置：
-- `DATABASE_URL`: 数据库连接
-- `PORT`: 后端端口
-- `NODE_ENV=production`
+## 部署与构建
+1. `cd frontend && npm run build` 生成静态资源。
+2. `cd backend && npm run build` 编译 TypeScript。
+3. 配置环境变量：
+   - `PORT`（默认 3001）
+   - `DEEPSEEK_API_KEY`
+   - `DATABASE_URL`（生产环境建议使用 PostgreSQL/MySQL）
+4. 启动后端：`cd backend && npm run start`，将前端构建产物交给静态服务器（或通过同域代理）。
 
 ## 常见问题
-
-### Q: 如何重置数据库？
-A: 删除 `backend/prisma/dev.db` 并重新运行 `npm run prisma:migrate`
-
-### Q: 前端如何调用新的 API？
-A: 在对应 feature 的 `api/` 目录添加 API 方法，使用 `apiClient`
-
-### Q: 如何添加新的验证规则？
-A: 在 `backend/src/validators/` 目录创建 Zod schema
-
-### Q: 组件应该放在哪里？
-A: 功能特定的放 `features/`，通用的放 `components/`
+| 问题 | 解决方案 |
+|------|----------|
+| DeepSeek 返回 401 | 检查 `.env` 是否加载、Key 是否正确。 |
+| AI 推荐全是旧目录 | 确保职业输入合理、选中的书签多样，并确认后台已启用自动新建逻辑。 |
+| 表格选择不同步 | `BookmarkTableRow` 的 `onToggleSelect` 需保持引用稳定，若新增列请同步更新。 |
+| dev.db 被 Git 跟踪 | 运行 `git rm --cached backend/prisma/dev.db` 一次，然后提交。 |
+| 粘性面板不生效 | 确认布局容器 `xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start` 以及 `aside` 的 `xl:sticky xl:top-28` 类未被覆盖。 |

@@ -1,11 +1,12 @@
 import React from 'react';
-import { ExternalLink, Edit, Folder as FolderIcon, Tag, Trash2 } from 'lucide-react';
+import { ExternalLink, Edit, Folder as FolderIcon, Pin, Tag, Trash2 } from 'lucide-react';
 import type { Bookmark as BookmarkType } from '~types';
 import { Button } from '@/components/ui/button';
 
 interface BookmarkTableRowProps {
   bookmark: BookmarkType;
   selected: boolean;
+  isPinned: boolean;
   cellPaddingClass: string;
   metaTextClass: string;
   highlightTitle: (text: string) => React.ReactNode;
@@ -14,12 +15,14 @@ interface BookmarkTableRowProps {
   onVisit: (id: number) => void;
   onEdit: (bookmark: BookmarkType) => void;
   onDelete: (id: number, title: string) => void;
+  onTogglePin: (bookmark: BookmarkType, nextPinned: boolean) => void;
   dataCell?: React.ReactNode;
 }
 
 export const BookmarkTableRow: React.FC<BookmarkTableRowProps> = ({
   bookmark,
   selected,
+  isPinned,
   cellPaddingClass,
   metaTextClass,
   highlightTitle,
@@ -28,6 +31,7 @@ export const BookmarkTableRow: React.FC<BookmarkTableRowProps> = ({
   onVisit,
   onEdit,
   onDelete,
+  onTogglePin,
   dataCell,
 }) => {
   const tagsSummary = () => {
@@ -86,6 +90,16 @@ export const BookmarkTableRow: React.FC<BookmarkTableRowProps> = ({
       </td>
       <td className={`px-1.5 ${cellPaddingClass} align-top text-center`}>
         <div className="flex items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`h-8 w-8 ${isPinned ? 'text-amber-500' : ''}`}
+            onClick={() => onTogglePin(bookmark, !isPinned)}
+            title={isPinned ? '取消置顶' : '置顶'}
+            aria-label={isPinned ? '取消置顶' : '置顶书签'}
+          >
+            <Pin className={`h-4 w-4 ${isPinned ? 'fill-current' : ''}`} />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

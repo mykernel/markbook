@@ -9,6 +9,7 @@ import {
   Tag,
   ChevronDown,
   ChevronUp,
+  Pin,
 } from 'lucide-react';
 import { bookmarkApi } from '../api/bookmarkApi';
 import { BookmarkDialogCN } from './BookmarkDialogCN';
@@ -43,6 +44,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
+const PIN_TAG_ALIASES = ['置顶', 'pinned'];
+const PIN_TAG_PRIMARY = PIN_TAG_ALIASES[0];
+const PIN_TAG_KEYS = PIN_TAG_ALIASES.map(name => name.toLowerCase());
+
+const isBookmarkPinned = (bookmark: BookmarkType) =>
+  bookmark.tags?.some(bt => PIN_TAG_KEYS.includes(bt.tag.name.toLowerCase())) ?? false;
 
 const BookmarkPageContent: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -337,6 +345,14 @@ const BookmarkPageContent: React.FC = () => {
     handleBulk({ action: 'removeTags', tags });
   }, [handleBulk, bulkRemoveTags]);
 
+  const handleBulkPin = useCallback(() => {
+    handleBulk({ action: 'addTags', tags: [PIN_TAG_PRIMARY] });
+  }, [handleBulk]);
+
+  const handleBulkUnpin = useCallback(() => {
+    handleBulk({ action: 'removeTags', tags: PIN_TAG_ALIASES });
+  }, [handleBulk]);
+
   const fetchAiSuggestions = useCallback(async () => {
     if (selectedIds.length === 0) {
       alert('请先选择要整理的书签');
@@ -521,6 +537,32 @@ const BookmarkPageContent: React.FC = () => {
         queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
       } catch (error) {
         console.error('记录访问失败', error);
+      }
+    },
+    [queryClient]
+  );
+
+  const handleTogglePinBookmark = useCallback(
+    async (bookmark: BookmarkType, shouldPin: boolean) => {
+      try {
+        if (shouldPin) {
+          await bookmarkApi.bulkAction({
+            action: 'addTags',
+            bookmarkIds: [bookmark.id],
+            tags: [PIN_TAG_PRIMARY],
+          });
+        } else {
+          await bookmarkApi.bulkAction({
+            action: 'removeTags',
+            bookmarkIds: [bookmark.id],
+            tags: PIN_TAG_ALIASES,
+          });
+        }
+        queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+        queryClient.invalidateQueries({ queryKey: ['tags'] });
+      } catch (error) {
+        console.error('切换置顶失败', error);
+        alert('置顶操作失败，请稍后再试');
       }
     },
     [queryClient]
@@ -831,6 +873,15 @@ const BookmarkPageContent: React.FC = () => {
                               目标：{selectedFolderLabel}
                             </span>
                           </div>
+                          <div className="flex items-center gap-2">
+                            <Button variant="outline" onClick={handleBulkPin}>
+                              <Pin className="mr-1 h-4 w-4" />
+                              置顶
+                            </Button>
+                            <Button variant="ghost" onClick={handleBulkUnpin}>
+                              取消置顶
+                            </Button>
+                          </div>
                           <Button variant="outline" onClick={fetchAiSuggestions} disabled={aiLoading}>
                             {aiLoading ? 'AI 分析中...' : 'AI 整理建议'}
                           </Button>
@@ -939,6 +990,7 @@ const BookmarkPageContent: React.FC = () => {
                                   key={bookmark.id}
                                   bookmark={bookmark}
                                   selected={selectedIds.includes(bookmark.id)}
+                                  isPinned={isBookmarkPinned(bookmark)}
                                   cellPaddingClass={cellPadding}
                                   metaTextClass={metaTextSize}
                                   highlightTitle={highlightText}
@@ -947,6 +999,7 @@ const BookmarkPageContent: React.FC = () => {
                                   onVisit={handleVisit}
                                   onEdit={handleOpenDialog}
                                   onDelete={handleDelete}
+                                  onTogglePin={handleTogglePinBookmark}
                                   dataCell={
                                     <div className="inline-flex flex-col items-end text-slate-600 gap-1 text-xs">
                                       <div className="flex items-baseline gap-1">
@@ -972,7 +1025,9 @@ const BookmarkPageContent: React.FC = () => {
                         </div>
                         ) : (
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                          {bookmarks.map(bookmark => (
+                          {bookmarks.map(bookmark => {
+                            const pinned = isBookmarkPinned(bookmark);
+                            return (
                             <Card key={bookmark.id} className="relative group overflow-hidden border border-slate-200 dark:border-slate-800">
                               <CardHeader className="pb-2">
                                 <div className="flex items-start justify-between gap-2">
@@ -1028,6 +1083,13 @@ const BookmarkPageContent: React.FC = () => {
                                   </span>
                                 </div>
                                 <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    size="sm"
+                                    variant={pinned ? 'secondary' : 'outline'}
+                                    onClick={() => handleTogglePinBookmark(bookmark, !pinned)}
+                                  >
+                                    {pinned ? '取消置顶' : '置顶'}
+                                  </Button>
                                   <Button size="sm" variant="outline" onClick={() => handleOpenDialog(bookmark)}>
                                     编辑
                                   </Button>
@@ -1041,7 +1103,8 @@ const BookmarkPageContent: React.FC = () => {
                                 </div>
                               </CardContent>
                             </Card>
-                          ))}
+                          );
+                          })}
                         </div>
                         )}
 
