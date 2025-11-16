@@ -11,10 +11,19 @@
 
 ## 示例界面（在 `docs/image`）
 ![首页-卡片](image/首页-卡片.png)
+*卡片模式下的首屏布局，展示固定侧栏、粘性工具栏与右侧洞察面板。*
+
 ![首页-表格](image/首页-表格.png)
+*表格模式列表，强调访问次数、最近访问和批量勾选交互。*
+
 ![AI 整理](image/AI整理.png)
+*AI 建议对话框，可输入职业偏好、查看推荐目录/标签并支持一键应用。*
+
 ![批量操作](image/批量操作.png)
+*批量工具条，提供删除、移动、增删标签以及置顶等操作反馈。*
+
 ![书签导入](image/书签导入.png)
+*导入书签流程示例，支持粘贴文件或文本、AI 自动分类。*
 
 ## 技术栈
 - 前端：React 18, TypeScript, Vite, TanStack Router/Query (Suspense), Tailwind + shadcn/ui, MUI Icons
