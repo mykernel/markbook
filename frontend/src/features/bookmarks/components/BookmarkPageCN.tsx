@@ -3,19 +3,18 @@ import { useSuspenseQuery, useQueryClient, useMutation } from '@tanstack/react-q
 import {
   Plus,
   Search,
-  Trash2,
-  Edit,
-  ExternalLink,
   Bookmark,
   Upload,
   Layers,
   Tag,
-  Folder as FolderIcon,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
 import { bookmarkApi } from '../api/bookmarkApi';
 import { BookmarkDialogCN } from './BookmarkDialogCN';
+import { BookmarkTableRow } from './BookmarkTableRow';
+import { InsightsPanel } from './InsightsPanel';
+import { QuickTipsPanel } from './QuickTipsPanel';
 import { FolderDialogCN } from '@/features/folders/components/FolderDialogCN';
 import { BulkMoveDialog } from '@/features/folders/components/BulkMoveDialog';
 import { ImportDialogCN } from '@/features/import/components/ImportDialogCN';
@@ -214,8 +213,14 @@ const BookmarkPageContent: React.FC = () => {
   });
   const totalBookmarks = data.pagination?.total ?? data.bookmarks.length;
   const cellPadding = 'py-2';
-  const titleSpacing = 'space-y-1';
   const metaTextSize = 'text-xs';
+  const frequentTags = useMemo(
+    () =>
+      [...tags]
+        .sort((a, b) => ((b._count?.bookmarks ?? 0) - (a._count?.bookmarks ?? 0)))
+        .slice(0, 5),
+    [tags]
+  );
   const statsList = statsTab === 'top' ? topVisited : recentVisited;
 
   const deleteMutation = useMutation({
@@ -629,50 +634,52 @@ const BookmarkPageContent: React.FC = () => {
                     </div>
                   </div>
                 )}
-              </section>
-
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="space-y-6">
-                  {/* 搜索栏和过滤器 */}
-                  <section className="rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/80 space-y-4">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-                        <Input
-                          type="text"
-                          placeholder="搜索书签标题、网址或描述..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-10 h-12 text-base"
-                        />
+                <div className="mt-6 border-t border-slate-200/70 pt-6 space-y-4">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <Input
+                        type="text"
+                        placeholder="搜索书签标题、网址或描述..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 h-12 text-base"
+                      />
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">排序:</span>
+                        <Select
+                          value={sortOption}
+                          onValueChange={(value) => handleSortChange(value as BookmarkSortOption)}
+                        >
+                          <SelectTrigger className="w-44">
+                            <SelectValue placeholder="选择排序" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="createdAt">最新收藏</SelectItem>
+                            <SelectItem value="visitCount">访问次数</SelectItem>
+                            <SelectItem value="lastVisitedAt">最近访问</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">排序:</span>
-                      <Select
-                        value={sortOption}
-                        onValueChange={(value) => handleSortChange(value as BookmarkSortOption)}
-                      >
-                        <SelectTrigger className="w-44">
-                              <SelectValue placeholder="选择排序" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="createdAt">最新收藏</SelectItem>
-                              <SelectItem value="visitCount">访问次数</SelectItem>
-                              <SelectItem value="lastVisitedAt">最近访问</SelectItem>
-                            </SelectContent>
-                      </Select>
                     </div>
                   </div>
-                </div>
-
-                    {/* 活动过滤器 */}
-                    {(selectedFolderId !== null || selectedTag) && (
+                  <div className="flex flex-wrap items-center gap-3">
+                    {(selectedFolderId !== null || selectedTag || debouncedSearch.trim()) && (
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm text-muted-foreground">已选择:</span>
+                        <span className="text-sm text-muted-foreground">筛选:</span>
+                        {debouncedSearch.trim() && (
+                          <Badge variant="secondary" className="gap-1">
+                            关键字
+                            <button onClick={() => setSearchQuery('')} className="ml-1">
+                              ×
+                            </button>
+                          </Badge>
+                        )}
                         {selectedFolderId !== null && (
                           <Badge variant="secondary" className="gap-1">
-                            文件夹过滤
+                            文件夹
                             <button onClick={() => handleFolderSelect(null)} className="ml-1">×</button>
                           </Badge>
                         )}
@@ -682,9 +689,32 @@ const BookmarkPageContent: React.FC = () => {
                             <button onClick={() => handleTagSelect(null)} className="ml-1">×</button>
                           </Badge>
                         )}
+                        <Button variant="ghost" size="sm" onClick={handleResetFilters}>
+                          清空
+                        </Button>
                       </div>
                     )}
-                  </section>
+                    {frequentTags.length > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm text-muted-foreground">常用标签:</span>
+                        {frequentTags.map(tag => (
+                          <Badge
+                            key={tag.id}
+                            variant={selectedTag === tag.name ? 'default' : 'secondary'}
+                            className="cursor-pointer"
+                            onClick={() => handleTagSelect(selectedTag === tag.name ? null : tag.name)}
+                          >
+                            {tag.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="space-y-6">
 
                   {selectedIds.length > 0 && (
                     <section className="rounded-2xl border border-primary/30 bg-primary/5 p-6 shadow-sm space-y-4">
@@ -825,62 +855,20 @@ const BookmarkPageContent: React.FC = () => {
                             </thead>
                             <tbody>
                               {data.bookmarks.map(bookmark => (
-                                <tr
+                                <BookmarkTableRow
                                   key={bookmark.id}
-                                  className="group border-t text-sm hover:bg-muted/30 transition-colors"
-                                >
-                                  <td className={`px-1.5 ${cellPadding} align-top`}>
-                                    <input
-                                      type="checkbox"
-                                      className="accent-primary"
-                                      checked={selectedIds.includes(bookmark.id)}
-                                      onChange={() => toggleSelection(bookmark.id)}
-                                    />
-                                  </td>
-                                  <td className={`px-1.5 ${cellPadding} align-top`}>
-                                    <div className={titleSpacing}>
-                                      <a
-                                        href={bookmark.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="font-medium text-foreground hover:text-primary line-clamp-1 flex items-center gap-1"
-                                        onClick={() => handleVisit(bookmark.id)}
-                                      >
-                                        <ExternalLink className="h-3 w-3" />
-                                        <span className="truncate">
-                                          {highlightTerm ? highlightText(bookmark.title) : bookmark.title}
-                                        </span>
-                                      </a>
-                                      <p className={`${metaTextSize} text-muted-foreground line-clamp-2`}>
-                                        {highlightTerm && bookmark.description
-                                          ? highlightText(bookmark.description)
-                                          : bookmark.description || '暂无描述'}
-                                      </p>
-                                      <div className={`flex flex-wrap items-center gap-3 ${metaTextSize} text-muted-foreground whitespace-nowrap`}>
-                                        <span className="flex items-center gap-1 min-w-[120px]">
-                                          <FolderIcon className="h-3 w-3" />
-                                          <span className="truncate">
-                                            {bookmark.folder?.name ?? '根目录'}
-                                          </span>
-                                        </span>
-                                        <span className="flex items-center gap-1 min-w-[140px]">
-                                          <Tag className="h-3 w-3" />
-                                          <span className="truncate">
-                                            {bookmark.tags && bookmark.tags.length > 0
-                                              ? (() => {
-                                                  const tagNames = bookmark.tags.map(bt => bt.tag.name);
-                                                  const display = tagNames.slice(0, 2).join('、');
-                                                  const extra = tagNames.length - Math.min(tagNames.length, 2);
-                                                  return `${display}${extra > 0 ? ` +${extra}` : ''}`;
-                                                })()
-                                              : '未打标签'}
-                                          </span>
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className={`px-1.5 ${cellPadding} align-top text-right`}>
-                                      <div className="inline-flex flex-col items-end text-slate-600 gap-1 text-xs">
+                                  bookmark={bookmark}
+                                  selected={selectedIds.includes(bookmark.id)}
+                                  cellPaddingClass={cellPadding}
+                                  metaTextClass={metaTextSize}
+                                  highlightTitle={highlightText}
+                                  highlightDescription={highlightText}
+                                  onToggleSelect={toggleSelection}
+                                  onVisit={handleVisit}
+                                  onEdit={handleOpenDialog}
+                                  onDelete={handleDelete}
+                                  dataCell={
+                                    <div className="inline-flex flex-col items-end text-slate-600 gap-1 text-xs">
                                       <div className="flex items-baseline gap-1">
                                         <span className="text-base font-semibold text-foreground">
                                           {bookmark.visitCount}
@@ -896,28 +884,8 @@ const BookmarkPageContent: React.FC = () => {
                                         </p>
                                       </div>
                                     </div>
-                                  </td>
-                                  <td className={`px-1.5 ${cellPadding} align-top text-center`}>
-                                    <div className="flex items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => handleOpenDialog(bookmark)}
-                                      >
-                                        <Edit className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-destructive"
-                                        onClick={() => handleDelete(bookmark.id, bookmark.title)}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  </td>
-                                </tr>
+                                  }
+                                />
                               ))}
                             </tbody>
                           </table>
@@ -943,99 +911,24 @@ const BookmarkPageContent: React.FC = () => {
                       </>
                     )}
                   </section>
+                  {data.pagination.totalPages && page < data.pagination.totalPages && (
+                    <div className="flex justify-center">
+                      <Button variant="link" onClick={() => setPage(p => p + 1)}>
+                        加载更多
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 <aside className="space-y-6">
-                  {/* 可折叠访问统计 */}
-                  <section className="rounded-2xl border border-slate-200/70 bg-white/75 p-6 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/80">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">访问洞察</h2>
-                        <p className="text-sm text-muted-foreground">
-                          热门与最近访问在此切换，保持与头部仪表盘的连续感
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex rounded-full border border-slate-200 bg-white/80 p-1 text-sm dark:border-slate-700 dark:bg-slate-900">
-                          {(['top', 'recent'] as const).map(key => (
-                            <button
-                              key={key}
-                              type="button"
-                              onClick={() => setStatsTab(key)}
-                              className={`px-3 py-1 rounded-full transition-colors ${
-                                statsTab === key
-                                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-                                  : 'text-slate-500 hover:text-slate-900'
-                              }`}
-                            >
-                              {key === 'top' ? '热门书签' : '最近访问'}
-                            </button>
-                          ))}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1"
-                          onClick={() => setStatsCollapsed(prev => !prev)}
-                        >
-                          {statsCollapsed ? '展开' : '收起'}
-                          {statsCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                    </div>
-                    {!statsCollapsed && (
-                      <div className="mt-4 space-y-3">
-                        {statsList.length === 0 ? (
-                          <div className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-muted-foreground dark:border-slate-700">
-                            {statsTab === 'top' ? '暂无热门书签数据' : '暂无最近访问记录'}
-                          </div>
-                        ) : (
-                          statsList.map((bookmark, index) => (
-                            <a
-                              key={bookmark.id}
-                              href={bookmark.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white/60 px-4 py-3 transition-colors hover:border-primary/60 dark:border-slate-800 dark:bg-slate-900/60"
-                            >
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-200">
-                                {index + 1}
-                              </div>
-                              <div className="flex-1">
-                                <p className="line-clamp-1 font-medium text-slate-900 dark:text-white">
-                                  {bookmark.title}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {statsTab === 'top'
-                                    ? `访问 ${bookmark.visitCount}`
-                                    : bookmark.lastVisitedAt
-                                    ? new Date(bookmark.lastVisitedAt).toLocaleString('zh-CN')
-                                    : '尚未记录访问时间'}
-                                </p>
-                              </div>
-                              <ExternalLink className="h-4 w-4 text-slate-400 transition-colors group-hover:text-primary" />
-                            </a>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </section>
-
-                  <section className="rounded-2xl border border-slate-200/70 bg-white/70 p-5 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/70 space-y-4">
-                    <h3 className="text-base font-semibold text-slate-900 dark:text-white">快速提示</h3>
-                    <p className="text-sm text-muted-foreground">
-                      结合 AI 建议、批量操作与导入能力，更快整理大量书签。
-                    </p>
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                      <li>• 批量选择后可直接触发 AI 整理。</li>
-                      <li>• 职业画像越具体，推荐的目录/标签越精准。</li>
-                      <li>• 导入前可先备份 export，避免重复。</li>
-                    </ul>
-                    <Button variant="outline" className="w-full gap-2" onClick={() => setImportDialogOpen(true)}>
-                      <Upload className="h-4 w-4" />
-                      快速导入书签
-                    </Button>
-                  </section>
+                  <InsightsPanel
+                    statsTab={statsTab}
+                    statsCollapsed={statsCollapsed}
+                    statsList={statsList}
+                    onTabChange={setStatsTab}
+                    onToggleCollapse={() => setStatsCollapsed(prev => !prev)}
+                  />
+                  <QuickTipsPanel onImport={() => setImportDialogOpen(true)} />
                 </aside>
               </div>
             </div>
