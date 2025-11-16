@@ -55,6 +55,11 @@ const BookmarkPageContent: React.FC = () => {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<BookmarkSortOption>('createdAt');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [viewMode, setViewMode] = useState<'table' | 'card'>(() => {
+    if (typeof window === 'undefined') return 'table';
+    const saved = localStorage.getItem('bookmark_view_mode');
+    return saved === 'card' ? 'card' : 'table';
+  });
   const [bulkMoveFolderId, setBulkMoveFolderId] = useState<number | null>(null);
   const [bulkMoveDialogOpen, setBulkMoveDialogOpen] = useState(false);
   const [bulkAddTags, setBulkAddTags] = useState('');
@@ -125,6 +130,10 @@ const BookmarkPageContent: React.FC = () => {
     localStorage.setItem('bookmark_user_profile', userProfile);
   }, [userProfile]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('bookmark_view_mode', viewMode);
+  }, [viewMode]);
 
 
   const selectedFolderLabel = useMemo(() => {
@@ -533,7 +542,7 @@ const BookmarkPageContent: React.FC = () => {
           <div className="mx-auto max-w-[1400px] px-10 py-10">
             <div className="space-y-8">
               {/* 顶部信息栏 */}
-              <section className="rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/80">
+              <section className="sticky top-0 z-30 rounded-2xl border border-slate-200/80 bg-white/95 p-6 shadow-sm backdrop-blur dark:border-slate-800/60 dark:bg-slate-900/90">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
@@ -646,7 +655,7 @@ const BookmarkPageContent: React.FC = () => {
                         className="pl-10 h-12 text-base"
                       />
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">排序:</span>
                         <Select
@@ -662,6 +671,29 @@ const BookmarkPageContent: React.FC = () => {
                             <SelectItem value="lastVisitedAt">最近访问</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">视图:</span>
+                        <div className="inline-flex rounded-md border bg-muted/30">
+                          <Button
+                            type="button"
+                            variant={viewMode === 'table' ? 'default' : 'ghost'}
+                            size="sm"
+                            className="rounded-none"
+                            onClick={() => setViewMode('table')}
+                          >
+                            表格
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={viewMode === 'card' ? 'default' : 'ghost'}
+                            size="sm"
+                            className="rounded-none"
+                            onClick={() => setViewMode('card')}
+                          >
+                            卡片
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
