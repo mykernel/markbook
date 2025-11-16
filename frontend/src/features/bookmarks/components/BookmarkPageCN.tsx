@@ -15,6 +15,7 @@ import { BookmarkDialogCN } from './BookmarkDialogCN';
 import { BookmarkTableRow } from './BookmarkTableRow';
 import { InsightsPanel } from './InsightsPanel';
 import { QuickTipsPanel } from './QuickTipsPanel';
+import { SmartOrganizePanel } from './SmartOrganizePanel';
 import { FolderDialogCN } from '@/features/folders/components/FolderDialogCN';
 import { BulkMoveDialog } from '@/features/folders/components/BulkMoveDialog';
 import { ImportDialogCN } from '@/features/import/components/ImportDialogCN';
@@ -30,6 +31,7 @@ import { SuspenseLoader } from '@/components/SuspenseLoader/SuspenseLoader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { folderApi } from '@/features/folders/api/folderApi';
 import { tagApi } from '@/features/tags/api/tagApi';
 import { AiSuggestionDialog } from './AiSuggestionDialog';
@@ -72,7 +74,7 @@ const BookmarkPageContent: React.FC = () => {
   const [aiSuggestions, setAiSuggestions] = useState<AiSuggestion[]>([]);
   const [statsCollapsed, setStatsCollapsed] = useState(false);
   const [statsTab, setStatsTab] = useState<'top' | 'recent'>('top');
-  const [overviewCollapsed, setOverviewCollapsed] = useState(false);
+  const [overviewCollapsed, setOverviewCollapsed] = useState(true);
   const queryClient = useQueryClient();
 
   // 获取文件夹列表
@@ -221,6 +223,8 @@ const BookmarkPageContent: React.FC = () => {
     },
   });
   const totalBookmarks = data.pagination?.total ?? data.bookmarks.length;
+  const totalPages = data.pagination?.totalPages ?? 1;
+  const bookmarks = data.bookmarks;
   const cellPadding = 'py-2';
   const metaTextSize = 'text-xs';
   const frequentTags = useMemo(
@@ -248,8 +252,8 @@ const BookmarkPageContent: React.FC = () => {
   const clearSelection = useCallback(() => setSelectedIds([]), []);
 
   const handleSelectAll = useCallback(() => {
-    setSelectedIds(data.bookmarks.map(bookmark => bookmark.id));
-  }, [data]);
+    setSelectedIds(bookmarks.map(bookmark => bookmark.id));
+  }, [bookmarks]);
 
   const handleBulk = useCallback(
     async (payload: Omit<BulkActionInput, 'bookmarkIds'>) => {
@@ -522,6 +526,34 @@ const BookmarkPageContent: React.FC = () => {
     [queryClient]
   );
 
+  const handleQuickCollection = useCallback(
+    (type: 'recent' | 'frequent' | 'pinned' | 'ai') => {
+      switch (type) {
+        case 'recent':
+          setSortOption('lastVisitedAt');
+          break;
+        case 'frequent':
+          setSortOption('visitCount');
+          break;
+        case 'pinned': {
+          const pinnedTag = tags.find(tag => tag.name === '置顶' || tag.name.toLowerCase() === 'pinned');
+          if (pinnedTag) {
+            handleTagSelect(selectedTag === pinnedTag.name ? null : pinnedTag.name);
+          } else {
+            alert('暂无标记为置顶的标签');
+          }
+          break;
+        }
+        case 'ai':
+          fetchAiSuggestions();
+          break;
+        default:
+          break;
+      }
+    },
+    [tags, selectedTag, fetchAiSuggestions, handleTagSelect]
+  );
+
   return (
     <div className="relative flex h-screen bg-background">
       <aside className="fixed inset-y-0 left-0 z-40 w-72 border-r border-border bg-background">
@@ -741,11 +773,26 @@ const BookmarkPageContent: React.FC = () => {
                         ))}
                       </div>
                     )}
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">常用合集:</span>
+                      <Button variant="ghost" size="sm" onClick={() => handleQuickCollection('recent')}>
+                        最近访问
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleQuickCollection('frequent')}>
+                        高频访问
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleQuickCollection('pinned')}>
+                        置顶书签
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleQuickCollection('ai')}>
+                        AI 推荐动作
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </section>
 
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
                 <div className="space-y-6">
 
                   {selectedIds.length > 0 && (
@@ -832,7 +879,7 @@ const BookmarkPageContent: React.FC = () => {
 
                   {/* 书签列表 */}
                   <section className="rounded-2xl border border-slate-200/80 bg-white/85 p-6 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/80">
-                    {data.bookmarks.length === 0 ? (
+                    {bookmarks.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-16 text-center">
                         <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
                           <Search className="h-7 w-7" />
@@ -859,23 +906,24 @@ const BookmarkPageContent: React.FC = () => {
                       </div>
                     ) : (
                       <>
+                        {viewMode === 'table' ? (
                         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white/60 dark:border-slate-800 dark:bg-slate-900/60">
-                        <table className="w-full text-sm table-fixed">
-                          <thead className="bg-muted/40 text-muted-foreground uppercase text-[11px]">
-                            <tr>
+                          <table className="w-full text-sm table-fixed">
+                            <thead className="bg-muted/40 text-muted-foreground uppercase text-[11px]">
+                              <tr>
                                 <th className="px-1.5 py-2 w-10">
                                   <input
                                     type="checkbox"
                                     className="accent-primary"
                                     checked={
                                       selectedIds.length > 0 &&
-                                      selectedIds.length === data.bookmarks.length
+                                      selectedIds.length === bookmarks.length
                                     }
                                     onChange={() => {
-                                      if (selectedIds.length === data.bookmarks.length) {
+                                      if (selectedIds.length === bookmarks.length) {
                                         clearSelection();
                                       } else {
-                                        setSelectedIds(data.bookmarks.map(b => b.id));
+                                        setSelectedIds(bookmarks.map(b => b.id));
                                       }
                                     }}
                                   />
@@ -886,7 +934,7 @@ const BookmarkPageContent: React.FC = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              {data.bookmarks.map(bookmark => (
+                              {bookmarks.map(bookmark => (
                                 <BookmarkTableRow
                                   key={bookmark.id}
                                   bookmark={bookmark}
@@ -922,18 +970,92 @@ const BookmarkPageContent: React.FC = () => {
                             </tbody>
                           </table>
                         </div>
+                        ) : (
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                          {bookmarks.map(bookmark => (
+                            <Card key={bookmark.id} className="relative group overflow-hidden border border-slate-200 dark:border-slate-800">
+                              <CardHeader className="pb-2">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <CardTitle className="text-lg line-clamp-2">
+                                      {highlightTerm ? highlightText(bookmark.title) : bookmark.title}
+                                    </CardTitle>
+                                    <CardDescription className="text-xs mt-1">
+                                      {bookmark.folder?.name ?? '根目录'}
+                                    </CardDescription>
+                                  </div>
+                                  <input
+                                    type="checkbox"
+                                    className="accent-primary mt-1"
+                                    checked={selectedIds.includes(bookmark.id)}
+                                    onChange={() => toggleSelection(bookmark.id)}
+                                  />
+                                </div>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                <p className="text-sm text-muted-foreground line-clamp-2">
+                                  {bookmark.description
+                                    ? highlightTerm
+                                      ? highlightText(bookmark.description)
+                                      : bookmark.description
+                                    : '暂无描述'}
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {bookmark.tags && bookmark.tags.length > 0 ? (
+                                    bookmark.tags.map(bt => (
+                                      <Badge
+                                        key={bt.tag.id}
+                                        variant="secondary"
+                                        className="text-xs cursor-pointer"
+                                        onClick={() =>
+                                          handleTagSelect(selectedTag === bt.tag.name ? null : bt.tag.name)
+                                        }
+                                      >
+                                        {bt.tag.name}
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">未打标签</span>
+                                  )}
+                                </div>
+                                <div className="flex justify-between text-xs text-muted-foreground">
+                                  <span>访问 {bookmark.visitCount}</span>
+                                  <span>
+                                    最近{' '}
+                                    {bookmark.lastVisitedAt
+                                      ? new Date(bookmark.lastVisitedAt).toLocaleDateString('zh-CN')
+                                      : '—'}
+                                  </span>
+                                </div>
+                                <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button size="sm" variant="outline" onClick={() => handleOpenDialog(bookmark)}>
+                                    编辑
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleDelete(bookmark.id, bookmark.title)}
+                                  >
+                                    删除
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                        )}
 
-                        {data.pagination.totalPages && data.pagination.totalPages > 1 && (
+                        {totalPages > 1 && (
                           <div className="flex items-center justify-center gap-4">
                             <Button variant="outline" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
                               上一页
                             </Button>
                             <span className="text-sm text-slate-600 dark:text-slate-400">
-                              第 {page} 页，共 {data.pagination.totalPages} 页
+                              第 {page} 页，共 {totalPages} 页
                             </span>
                             <Button
                               variant="outline"
-                              disabled={page === data.pagination.totalPages}
+                              disabled={page === totalPages}
                               onClick={() => setPage(p => p + 1)}
                             >
                               下一页
@@ -943,7 +1065,7 @@ const BookmarkPageContent: React.FC = () => {
                       </>
                     )}
                   </section>
-                  {data.pagination.totalPages && page < data.pagination.totalPages && (
+                  {page < totalPages && (
                     <div className="flex justify-center">
                       <Button variant="link" onClick={() => setPage(p => p + 1)}>
                         加载更多
@@ -951,16 +1073,26 @@ const BookmarkPageContent: React.FC = () => {
                     </div>
                   )}
                 </div>
-
-                <aside className="space-y-6">
-                  <InsightsPanel
-                    statsTab={statsTab}
-                    statsCollapsed={statsCollapsed}
-                    statsList={statsList}
-                    onTabChange={setStatsTab}
-                    onToggleCollapse={() => setStatsCollapsed(prev => !prev)}
-                  />
-                  <QuickTipsPanel onImport={() => setImportDialogOpen(true)} />
+                <aside className="space-y-6 xl:sticky xl:top-28 xl:h-fit">
+                  <div className="space-y-6 xl:max-h-[calc(100vh-110px)] xl:overflow-y-auto xl:pr-2">
+                    <InsightsPanel
+                      statsTab={statsTab}
+                      statsCollapsed={statsCollapsed}
+                      statsList={statsList}
+                      onTabChange={setStatsTab}
+                      onToggleCollapse={() => setStatsCollapsed(prev => !prev)}
+                    />
+                    <SmartOrganizePanel
+                      selectedCount={selectedIds.length}
+                      aiSuggestions={aiSuggestions}
+                      loading={aiLoading}
+                      onFetch={fetchAiSuggestions}
+                      onApply={applyAiSuggestion}
+                      onApplyAll={applyAllSuggestions}
+                      onOpenDialog={() => setAiDialogOpen(true)}
+                    />
+                    <QuickTipsPanel onImport={() => setImportDialogOpen(true)} />
+                  </div>
                 </aside>
               </div>
             </div>

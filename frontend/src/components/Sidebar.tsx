@@ -94,8 +94,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const rootFolders = buildFolderTree(folders || [], null);
 
   return (
-    <div className="w-64 h-screen bg-background border-r border-border overflow-y-auto">
-      <div className="p-4 space-y-6">
+    <div className="w-64 h-screen bg-background border-r border-border overflow-y-auto flex flex-col">
+      {/* Logo Header */}
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center gap-2">
+          <img src="/favicon.svg" alt="MarkBook" className="h-8 w-8" />
+          <span className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+            MarkBook
+          </span>
+        </div>
+      </div>
+
+      <div className="flex-1 p-4 space-y-6 overflow-y-auto">
         {/* 全部书签 */}
         <div>
           <h3 className="text-sm font-semibold text-muted-foreground mb-2 px-3">导航</h3>
